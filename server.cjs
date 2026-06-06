@@ -44,6 +44,7 @@ if (rawDbUrl) {
 }
 
 let pool = null;
+let dbError = null;
 
 if (isDbConfigured) {
   try {
@@ -63,10 +64,12 @@ if (isDbConfigured) {
     console.log(`🐘 PostgreSQL 연결 풀 생성 완료 (${isInternalUrl ? '내부 네트워크' : isPublicProxy ? '공개 프록시(rlwy.net)' : '외부 URL'} 모드)`);
   } catch (poolErr) {
     console.error('❌ Pool 생성 실패:', poolErr.message);
+    dbError = poolErr.message;
     pool = null;
   }
 } else {
   console.warn('⚠️ DATABASE_URL 환경변수가 없습니다. DB 없이 인메모리(임시) 모드로 동작합니다.');
+  dbError = 'DATABASE_URL 환경변수가 설정되지 않았습니다.';
 }
 
 // 데이터베이스 초기화 함수
@@ -565,9 +568,14 @@ app.get('/api/health', (req, res) => {
 // DB 실제 상태 확인용 디버그 엔드포인트
 app.get('/api/db-status', async (req, res) => {
   if (!pool) {
+    const maskedUrl = rawDbUrl ? rawDbUrl.replace(/:([^@]+)@/, ':****@') : '없음';
     return res.json({
       mode: 'inmemory',
       message: '⚠️ DB 미연결 - 인메모리 모드로 동작 중',
+      isDbConfigured,
+      rawDbUrlState: rawDbUrl ? `✅ 존재함 (길이: ${rawDbUrl.length})` : '❌ 없음',
+      maskedUrl,
+      dbError: dbError || '알 수 없는 이유로 풀이 생성되지 않았습니다.',
       inMemoryCount: inMemoryEvaluations.length,
       inMemoryStudents: inMemoryEvaluations.map(e => e.studentName)
     });
