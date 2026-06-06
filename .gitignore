@@ -10,7 +10,14 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+
+# --- [중요] 환경변수 및 비밀키 보안 설정 추가 ---
+.env
+.env.production
+.env.development
+.env.local
 *.local
+# ---------------------------------------------
 
 # Editor directories and files
 .vscode/*
