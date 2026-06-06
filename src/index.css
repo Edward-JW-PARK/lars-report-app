@@ -1,0 +1,842 @@
+/* src/index.css */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700&family=Noto+Sans+KR:wght@300;400;500;700&display=swap');
+
+:root {
+  /* Color Palette - Premium Navy & Warm Gold */
+  --primary-navy: #0A192F;
+  --secondary-navy: #172A45;
+  --accent-gold: #C5A880;
+  --accent-gold-hover: #D4AF37;
+  --bg-dark: #060D1A;
+  --text-light: #F4F6F9;
+  --text-muted: #8892B0;
+  --text-dark: #232B38;
+  --card-bg: rgba(23, 42, 69, 0.7);
+  --border-color: rgba(197, 168, 128, 0.2);
+  --success-color: #2ECC71;
+  --warning-color: #F1C40F;
+  --danger-color: #E74C3C;
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.15);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.3);
+  --shadow-lg: 0 16px 40px rgba(0, 0, 0, 0.5);
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Noto Sans KR', 'Inter', sans-serif;
+  background-color: var(--bg-dark);
+  color: var(--text-light);
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Outfit', 'Noto Sans KR', sans-serif;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* Scrollbar Style */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: var(--bg-dark);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--secondary-navy);
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--accent-gold);
+}
+
+/* Micro-animations and Transitions */
+.btn, .card, input, select, .checkbox-btn, tr {
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Workspace Dashboard Layout */
+.app-container {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  padding: 2rem;
+  max-width: 1400px;
+  margin: 0 auto;
+}
+
+/* Header */
+.app-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding-bottom: 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.logo-group {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.logo-title {
+  font-size: 1.8rem;
+  font-weight: 700;
+  background: linear-gradient(135deg, var(--text-light) 0%, var(--accent-gold) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.logo-subtitle {
+  font-size: 0.85rem;
+  color: var(--accent-gold);
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-weight: 500;
+  margin-top: -0.25rem;
+}
+
+.nav-actions {
+  display: flex;
+  gap: 1rem;
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.65rem 1.25rem;
+  border-radius: 6px;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  font-size: 0.95rem;
+}
+
+.btn-primary {
+  background-color: var(--accent-gold);
+  color: var(--primary-navy);
+}
+
+.btn-primary:hover {
+  background-color: var(--accent-gold-hover);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(197, 168, 128, 0.3);
+}
+
+.btn-secondary {
+  background-color: transparent;
+  color: var(--text-light);
+  border: 1px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+  background-color: rgba(255, 255, 255, 0.05);
+  border-color: var(--accent-gold);
+  transform: translateY(-2px);
+}
+
+.btn-danger {
+  background-color: rgba(231, 76, 60, 0.1);
+  color: #ff6b6b;
+  border: 1px solid rgba(231, 76, 60, 0.3);
+}
+
+.btn-danger:hover {
+  background-color: var(--danger-color);
+  color: white;
+  transform: translateY(-2px);
+}
+
+/* Card */
+.card {
+  background: var(--card-bg);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  padding: 2rem;
+  backdrop-filter: blur(10px);
+  box-shadow: var(--shadow-md);
+}
+
+.card:hover {
+  box-shadow: var(--shadow-lg);
+  border-color: rgba(197, 168, 128, 0.4);
+}
+
+/* Form Styling */
+.form-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.form-group label {
+  font-size: 0.9rem;
+  color: var(--accent-gold);
+  font-weight: 500;
+}
+
+input, select, textarea {
+  background-color: rgba(10, 25, 47, 0.8);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  color: white;
+  font-size: 0.95rem;
+  outline: none;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--accent-gold);
+  box-shadow: 0 0 0 2px rgba(197, 168, 128, 0.15);
+}
+
+/* Question O/X Input Grid */
+.questions-section {
+  margin-top: 2rem;
+}
+
+.questions-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+
+.question-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.question-card {
+  background-color: rgba(10, 25, 47, 0.6);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.question-card.correct {
+  border-left: 4px solid var(--success-color);
+}
+
+.question-card.incorrect {
+  border-left: 4px solid var(--danger-color);
+}
+
+.q-meta-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.q-num-label {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--text-light);
+}
+
+.q-badge-row {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+}
+
+.badge {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+  font-weight: 500;
+}
+
+.badge-chapter {
+  background-color: rgba(197, 168, 128, 0.15);
+  color: var(--accent-gold);
+}
+
+.badge-diff-하 { background-color: rgba(46, 204, 113, 0.15); color: #2ecc71; }
+.badge-diff-중 { background-color: rgba(241, 196, 15, 0.15); color: #f1c40f; }
+.badge-diff-상 { background-color: rgba(230, 126, 34, 0.15); color: #e67e22; }
+.badge-diff-최상 { background-color: rgba(231, 76, 60, 0.15); color: #e74c3c; }
+
+.q-title-desc {
+  font-size: 0.8rem;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ox-btn-group {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.ox-btn {
+  flex: 1;
+  padding: 0.4rem;
+  border-radius: 4px;
+  border: 1px solid var(--border-color);
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.ox-btn-o.active {
+  background-color: var(--success-color);
+  color: white;
+  border-color: var(--success-color);
+  box-shadow: 0 2px 6px rgba(46, 204, 113, 0.3);
+}
+
+.ox-btn-x.active {
+  background-color: var(--danger-color);
+  color: white;
+  border-color: var(--danger-color);
+  box-shadow: 0 2px 6px rgba(231, 76, 60, 0.3);
+}
+
+/* History Dashboard Table */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 2rem;
+}
+
+@media (min-width: 1024px) {
+  .dashboard-grid {
+    grid-template-columns: 3fr 2fr;
+  }
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 1rem;
+  font-size: 0.95rem;
+}
+
+th, td {
+  padding: 0.85rem 1rem;
+  text-align: left;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+th {
+  color: var(--accent-gold);
+  font-weight: 500;
+  background-color: rgba(23, 42, 69, 0.4);
+}
+
+tr:hover {
+  background-color: rgba(255, 255, 255, 0.02);
+}
+
+/* Trend Panel Visuals */
+.trend-card-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 1rem;
+}
+
+.trend-card-item {
+  background-color: rgba(10, 25, 47, 0.5);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 1rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.trend-item-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.trend-item-score {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent-gold);
+}
+
+/* Loading overlay */
+.loading-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(6, 13, 26, 0.85);
+  backdrop-filter: blur(5px);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  gap: 1.5rem;
+}
+
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 4px solid var(--border-color);
+  border-top-color: var(--accent-gold);
+  border-radius: 50%;
+  animation: spin 1s infinite linear;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* ==========================================
+   PRINT & REPORT VIEWS (PREMIUM LIGHT THEME)
+   ========================================== */
+.report-workspace-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background-color: #f0f2f5;
+  color: var(--text-dark);
+  padding: 2rem 0;
+  min-height: 100vh;
+}
+
+.workspace-actions-floating {
+  position: sticky;
+  top: 1rem;
+  z-index: 100;
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  background: var(--secondary-navy);
+  border: 1px solid var(--border-color);
+  padding: 0.75rem 1.5rem;
+  border-radius: 30px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+}
+
+.report-a4-page {
+  width: 210mm;
+  min-height: 297mm;
+  padding: 15mm;
+  margin: 1.5rem auto;
+  background-color: white;
+  box-shadow: 0 4px 20px rgba(0,0,0,0.08);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  box-sizing: border-box;
+}
+
+/* Page Break Divider for view mode */
+.page-divider {
+  width: 100%;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin: 1rem 0;
+  border-top: 1px dashed #ccc;
+  padding-top: 0.5rem;
+}
+
+/* Report Typography & Styles */
+.report-header {
+  border-bottom: 3px double var(--primary-navy);
+  padding-bottom: 1rem;
+  margin-bottom: 1.5rem;
+  position: relative;
+}
+
+.report-title-badge {
+  display: inline-block;
+  background-color: var(--primary-navy);
+  color: white;
+  font-size: 0.75rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-weight: 600;
+  letter-spacing: 0.1em;
+  margin-bottom: 0.5rem;
+}
+
+.report-title {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: var(--primary-navy);
+  line-height: 1.2;
+}
+
+.report-student-meta {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  border: 1px solid #ccc;
+  margin-top: 1rem;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.meta-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 0.5rem;
+  border-right: 1px solid #eee;
+}
+
+.meta-box:last-child {
+  border-right: none;
+}
+
+.meta-box-label {
+  font-size: 0.75rem;
+  color: #666;
+  font-weight: 500;
+  margin-bottom: 0.15rem;
+}
+
+.meta-box-value {
+  font-size: 0.95rem;
+  font-weight: 700;
+  color: var(--primary-navy);
+}
+
+/* Subsections in Report */
+.report-section {
+  margin-bottom: 1.5rem;
+}
+
+.section-title-container {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  border-bottom: 1.5px solid var(--primary-navy);
+  padding-bottom: 0.35rem;
+}
+
+.section-num {
+  background-color: var(--primary-navy);
+  color: white;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Outfit', sans-serif;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.section-title {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: var(--primary-navy);
+}
+
+/* Score Panel layout */
+.score-dashboard-grid {
+  display: grid;
+  grid-template-columns: 1.2fr 1fr 1.5fr;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.report-panel {
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 1rem;
+  background-color: #fafbfc;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+}
+
+.score-main-value {
+  font-size: 3.5rem;
+  font-weight: 800;
+  color: var(--primary-navy);
+  text-align: center;
+  line-height: 1;
+}
+
+.score-total-count {
+  font-size: 0.85rem;
+  color: #666;
+  text-align: center;
+  margin-top: 0.25rem;
+}
+
+.achievement-level-box {
+  text-align: center;
+  padding: 0.75rem;
+  border-radius: 6px;
+  font-weight: 700;
+  font-size: 1.2rem;
+  margin-top: 0.5rem;
+}
+
+.level-도달 { background-color: rgba(46, 204, 113, 0.15); color: #27ae60; border: 1.5px solid #2ecc71; }
+.level-부분도달 { background-color: rgba(241, 196, 15, 0.15); color: #d35400; border: 1.5px solid #f1c40f; }
+.level-미도달 { background-color: rgba(231, 76, 60, 0.15); color: #c0392b; border: 1.5px solid #e74c3c; }
+
+/* Progress Visuals (Bars) */
+.progress-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+
+.progress-row {
+  display: flex;
+  flex-direction: column;
+}
+
+.progress-label-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.8rem;
+  margin-bottom: 0.15rem;
+  font-weight: 500;
+}
+
+.progress-bar-bg {
+  width: 100%;
+  height: 8px;
+  background-color: #eaeff2;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.progress-bar-fill {
+  height: 100%;
+  background-color: var(--primary-navy);
+  border-radius: 4px;
+}
+
+.progress-bar-fill.gold {
+  background-color: var(--accent-gold);
+}
+
+/* Grid for Domain/Unit lists */
+.domain-unit-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+/* Report Table */
+.report-table {
+  width: 100%;
+  font-size: 0.8rem;
+  margin-top: 0.25rem;
+}
+
+.report-table th {
+  background-color: #f1f3f6;
+  color: var(--primary-navy);
+  font-weight: 700;
+  border: 1px solid #d3dbe2;
+  padding: 0.4rem 0.5rem;
+  text-align: center;
+}
+
+.report-table td {
+  border: 1px solid #e2e8f0;
+  padding: 0.4rem 0.5rem;
+  color: var(--text-dark);
+}
+
+.report-table td.center {
+  text-align: center;
+}
+
+.report-table tr:nth-child(even) {
+  background-color: #fafbfc;
+}
+
+/* AI Coaching block styling */
+.coaching-box-container {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+@media (min-width: 768px) {
+  .coaching-box-container {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.coaching-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  padding: 0.85rem;
+  background-color: #fafbfc;
+}
+
+.coaching-card.full-width {
+  grid-column: 1 / -1;
+}
+
+.coaching-card-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--primary-navy);
+  border-left: 3px solid var(--accent-gold);
+  padding-left: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.coaching-card-body {
+  font-size: 0.8rem;
+  color: #334155;
+  white-space: pre-line;
+}
+
+/* Mentor notes custom box */
+.mentor-notes-report-box {
+  background-color: rgba(197, 168, 128, 0.08);
+  border: 1px solid rgba(197, 168, 128, 0.3);
+  border-left: 4px solid var(--accent-gold);
+  padding: 0.85rem;
+  border-radius: 0 6px 6px 0;
+  margin-top: 0.5rem;
+}
+
+.mentor-notes-report-box-title {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #8c6d3f;
+  margin-bottom: 0.25rem;
+}
+
+.mentor-notes-report-box-body {
+  font-size: 0.8rem;
+  color: #5d4037;
+  font-style: italic;
+}
+
+/* Page footer */
+.report-footer {
+  margin-top: auto;
+  border-top: 1px solid #eee;
+  padding-top: 0.5rem;
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.7rem;
+  color: #888;
+}
+
+/* ============================================================== */
+/* PRINT & REPORT VIEWS (SUPER ACCURATE LAYOUT FOR LONG CONTENT)  */
+/* ============================================================== */
+@media print {
+  /* 1. 배경색 및 이미지 보존 설정 강제 활성화 */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+
+  /* 2. 브라우저의 flex 인쇄 버그 방지를 위해 모든 구조를 block으로 완벽 복원 */
+  html, body, #root, .app-container, .report-workspace-container {
+    background: white !important;
+    color: black !important;
+    padding: 0 !important;
+    margin: 0 !important;
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+    position: static !important;
+    display: block !important; /* flex 해제 */
+  }
+
+  /* 3. 인쇄 시 불필요한 컨트롤바 및 구분 장식 숨김 */
+  .app-header, 
+  .workspace-actions-floating, 
+  .page-divider, 
+  .no-print,
+  button {
+    display: none !important;
+  }
+
+  /* 4. A4 출력 용지 규격 지정 및 하단 바깥 여백 초기화 */
+  @page {
+    size: A4 portrait;
+    margin: 15mm 15mm 15mm 15mm;
+  }
+
+  /* 5. A4 페이지의 물리적 크기 흐름 제어 */
+  .report-a4-page {
+    display: block !important; /* flex 레이아웃 해제 (인쇄 잘림 방지 핵심) */
+    position: relative !important;
+    width: 210mm !important;
+    /* 고정 min-height와 height를 제거하여 내용이 넘치면 자연스럽게 다음 페이지로 연장되도록 유도 */
+    height: auto !important;
+    min-height: auto !important;
+    padding: 0 !important;
+    margin: 0 auto 20mm auto !important;
+    background: white !important;
+    box-shadow: none !important;
+    border: none !important;
+    page-break-after: auto !important; /* 브라우저가 자동 분할하도록 유도 */
+    break-after: auto !important;
+  }
+
+  /* 6. 테이블 행(tr) 및 열(td)이 페이지 경계선에서 반으로 쪼개져 찌그러지는 현상 방지 */
+  .report-table {
+    page-break-inside: auto !important;
+    break-inside: auto !important;
+    width: 100% !important;
+  }
+
+  .report-table tr {
+    page-break-inside: avoid !important; /* 행 내부에서 강제 페이지 나눔 방지 */
+    break-inside: avoid !important;
+  }
+
+  .report-table td, .report-table th {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* 7. AI 코칭 카드 및 멘토 메모 카드가 잘리는 현상 차단 */
+  .coaching-card, .mentor-notes-report-box {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+}
