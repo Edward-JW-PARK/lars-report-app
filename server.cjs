@@ -47,16 +47,20 @@ let pool = null;
 
 if (isDbConfigured) {
   try {
-    // Railway 내부 네트워크(railway.internal)는 SSL 없이 연결 가능
-    // 외부 공개 URL은 SSL 필요 → 두 경우 모두 처리
+    // railway.internal = Railway 내부 네트워크 (SSL 불필요, Private Networking 활성화 필요)
+    // rlwy.net / proxy.rlwy.net = Railway 공개 프록시 URL (SSL 필요)
     const isInternalUrl = rawDbUrl.includes('railway.internal');
+    const isPublicProxy = rawDbUrl.includes('rlwy.net');
     pool = new Pool({
       connectionString: rawDbUrl,
       ssl: isInternalUrl
-        ? false  // 내부 네트워크는 SSL 불필요
-        : { rejectUnauthorized: false }  // 외부 URL은 SSL 사용
+        ? false
+        : { rejectUnauthorized: false },
+      connectionTimeoutMillis: 10000,
+      idleTimeoutMillis: 30000,
+      max: 5
     });
-    console.log(`🐘 PostgreSQL 연결 풀 생성 완료 (${isInternalUrl ? '내부 네트워크' : '외부 URL'} 모드)`);
+    console.log(`🐘 PostgreSQL 연결 풀 생성 완료 (${isInternalUrl ? '내부 네트워크' : isPublicProxy ? '공개 프록시(rlwy.net)' : '외부 URL'} 모드)`);
   } catch (poolErr) {
     console.error('❌ Pool 생성 실패:', poolErr.message);
     pool = null;
