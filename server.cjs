@@ -33,17 +33,34 @@ const Anthropic = require('@anthropic-ai/sdk');
 const { Pool } = require('pg');
 
 // Railway는 DATABASE_URL 환경변수를 자동으로 넣어줍니다.
-const isDbConfigured = !!process.env.DATABASE_URL;
+const rawDbUrl = process.env.DATABASE_URL;
+const isDbConfigured = !!rawDbUrl;
+
+console.log(`\n🔍 DATABASE_URL 환경변수 상태: ${isDbConfigured ? '✅ 존재함' : '❌ 없음'}`);
+if (rawDbUrl) {
+  // 비밀번호 마스킹 후 일부만 출력
+  const maskedUrl = rawDbUrl.replace(/:([^@]+)@/, ':****@');
+  console.log(`   URL(마스킹): ${maskedUrl}`);
+}
+
 let pool = null;
 
 if (isDbConfigured) {
-  pool = new Pool({
-    connectionString: process.env.DATABASE_URL,
-    ssl: {
-      rejectUnauthorized: false // Railway는 SSL 연결을 기본 요구합니다.
-    }
-  });
-  console.log('🐘 PostgreSQL 연결 풀 생성 완료 (DATABASE_URL 수신)');
+  try {
+    // Railway 내부 네트워크(railway.internal)는 SSL 없이 연결 가능
+    // 외부 공개 URL은 SSL 필요 → 두 경우 모두 처리
+    const isInternalUrl = rawDbUrl.includes('railway.internal');
+    pool = new Pool({
+      connectionString: rawDbUrl,
+      ssl: isInternalUrl
+        ? false  // 내부 네트워크는 SSL 불필요
+        : { rejectUnauthorized: false }  // 외부 URL은 SSL 사용
+    });
+    console.log(`🐘 PostgreSQL 연결 풀 생성 완료 (${isInternalUrl ? '내부 네트워크' : '외부 URL'} 모드)`);
+  } catch (poolErr) {
+    console.error('❌ Pool 생성 실패:', poolErr.message);
+    pool = null;
+  }
 } else {
   console.warn('⚠️ DATABASE_URL 환경변수가 없습니다. DB 없이 인메모리(임시) 모드로 동작합니다.');
 }
