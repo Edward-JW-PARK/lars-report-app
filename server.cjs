@@ -546,8 +546,8 @@ const distPath = path.join(__dirname, 'dist');
 if (fs.existsSync(distPath)) {
   app.use(express.static(distPath));
   
-  // SPA 라우팅 지원: API 주소를 제외한 모든 접속 경로를 index.html로 안정적으로 위임
-  app.get('*', (req, res, next) => {
+  // [수정] Express 5 / path-to-regexp v8 규격에 맞춘 명명된 와일드카드 적용 (루트 및 하위 경로 전체 매칭)
+  app.get('/{*splat}', (req, res, next) => {
     if (req.path.startsWith('/api')) {
       return next();
     }
