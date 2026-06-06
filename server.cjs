@@ -643,8 +643,10 @@ if (fs.existsSync(distPath)) {
   console.warn('⚠️  dist 폴더가 없습니다. 로컬 개발 API 서버 모드로만 동작합니다.');
 }
 
-app.listen(PORT, () => {
-  console.log(`\n🚀 LARS API 서버 시작! http://localhost:${PORT}`);
+// 레일웨이가 주입해 준 포트를 최우선 바인딩하며, 외부 접근을 허용하기 위해 "0.0.0.0" 호스트를 반드시 명시합니다.
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`\n🚀 LARS API 서버 시작! http://0.0.0.0:${PORT}`);
   console.log(`   API 키: ${process.env.ANTHROPIC_API_KEY ? '✅ 정상 로드됨' : '❌ 없음 - .env.local 확인 필요'}`);
-  console.log(`   헬스체크: http://localhost:${PORT}/api/health\n`);
+  console.log(`   헬스체크: http://0.0.0.0:${PORT}/api/health\n`);
 });
+
