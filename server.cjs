@@ -4,30 +4,42 @@ const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 
-// .env.local 파일 수동 로드
+// .env.local 파일 수동 로드 (Windows \r 줄바꿈 호환성 패치 버전)
 function loadEnvFile() {
   const envPath = path.join(__dirname, '.env.local');
   if (fs.existsSync(envPath)) {
-    const lines = fs.readFileSync(envPath, 'utf-8').split('\n');
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith('#')) continue;
-      const eqIdx = trimmed.indexOf('=');
-      if (eqIdx > 0) {
-        const key = trimmed.slice(0, eqIdx).trim();
-        const val = trimmed.slice(eqIdx + 1).trim();
-        if (!process.env[key]) {
-          process.env[key] = val;
+    try {
+      const content = fs.readFileSync(envPath, 'utf-8');
+      // Windows(\r\n)와 Mac/Linux(\n) 줄바꿈을 모두 통합하여 안전하게 처리합니다.
+      const lines = content.replace(/\r\n/g, '\n').split('\n');
+      
+      for (const line of lines) {
+        const trimmed = line.trim();
+        if (!trimmed || trimmed.startsWith('#')) continue;
+        const eqIdx = trimmed.indexOf('=');
+        if (eqIdx > 0) {
+          const key = trimmed.slice(0, eqIdx).trim();
+          // 값 양 끝의 공백 및 따옴표("", '')를 정교하게 제거합니다.
+          let val = trimmed.slice(eqIdx + 1).trim();
+          if ((val.startsWith('"') && val.endsWith('"')) || (val.startsWith("'") && val.endsWith("'"))) {
+            val = val.slice(1, -1);
+          }
+          if (!process.env[key]) {
+            process.env[key] = val;
+          }
         }
       }
+      console.log('✅ .env.local 로드 완료');
+    } catch (err) {
+      console.error('❌ .env.local 파일 읽기 에러:', err.message);
     }
-    console.log('✅ .env.local 로드 완료');
   } else {
     console.warn('⚠️  .env.local 파일이 없습니다.');
   }
 }
 
 loadEnvFile();
+
 
 const Anthropic = require('@anthropic-ai/sdk');
 const { Pool } = require('pg');
