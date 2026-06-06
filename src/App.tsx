@@ -20,7 +20,7 @@ interface Evaluation {
 }
 
 // Seed initial mock data for Park Min-gun (matching the Matholic PDF)
-const INITIAL_EVALUATIONS: Evaluation[] = [
+export const INITIAL_EVALUATIONS: Evaluation[] = [
   {
     id: "eval-mingun-pre",
     studentName: "박민건",
@@ -74,20 +74,28 @@ const INITIAL_EVALUATIONS: Evaluation[] = [
 ];
 
 export const App: React.FC = () => {
-  const [evaluations, setEvaluations] = useState<Evaluation[]>(() => {
-    const saved = localStorage.getItem("lars_evaluations");
-    return saved ? JSON.parse(saved) : INITIAL_EVALUATIONS;
-  });
+  const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
 
   const [currentScreen, setCurrentScreen] = useState<"list" | "input" | "report">("list");
   const [selectedEvalId, setSelectedEvalId] = useState<string | null>(null);
   const [editingEvalId, setEditingEvalId] = useState<string | null>(null);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
 
-  // Sync with localStorage
+  // 로컬 DB 실시간 데이터 로드
   useEffect(() => {
-    localStorage.setItem("lars_evaluations", JSON.stringify(evaluations));
-  }, [evaluations]);
+    const loadData = async () => {
+      try {
+        const response = await fetch("/api/evaluations");
+        if (response.ok) {
+          const data = await response.json();
+          setEvaluations(data);
+        }
+      } catch (err) {
+        console.error("❌ DB 데이터 조회 실패:", err);
+      }
+    };
+    loadData();
+  }, []);
 
   const activeEvaluation = evaluations.find((e) => e.id === selectedEvalId);
   const editingEvaluation = evaluations.find((e) => e.id === editingEvalId);
@@ -138,12 +146,20 @@ export const App: React.FC = () => {
       }
 
       const aiData = await response.json();
+      const updatedEval = { ...targetEval, aiResult: aiData };
+
+      // DB에 수정사항 반영 (PUT)
+      await fetch(`/api/evaluations/${targetEval.id}`, {
+        method: "PUT",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(updatedEval),
+      });
 
       setEvaluations((prev) =>
         prev.map((e) =>
-          e.id === targetEval.id
-            ? { ...e, aiResult: aiData }
-            : e
+          e.id === targetEval.id ? updatedEval : e
         )
       );
     } catch (e: any) {
@@ -183,16 +199,29 @@ export const App: React.FC = () => {
         aiResult: isDataChanged ? null : editingEval!.aiResult
       };
 
-      setEvaluations((prev) =>
-        prev.map((e) => (e.id === editingEvalId ? targetEval : e))
-      );
-      setSelectedEvalId(editingEvalId);
-      setEditingEvalId(null);
+      try {
+        // DB에 PUT 수정 요청
+        const res = await fetch(`/api/evaluations/${editingEvalId}`, {
+          method: "PUT",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(targetEval),
+        });
 
-      setCurrentScreen("report");
+        if (!res.ok) throw new Error("DB 수정 요청에 실패했습니다.");
 
-      if (isDataChanged) {
-        await generateAIReportForEval(targetEval);
+        setEvaluations((prev) =>
+          prev.map((e) => (e.id === editingEvalId ? targetEval : e))
+        );
+        setSelectedEvalId(editingEvalId);
+        setEditingEvalId(null);
+        setCurrentScreen("report");
+
+        if (isDataChanged) {
+          await generateAIReportForEval(targetEval);
+        }
+      } catch (err: any) {
+        console.error(err);
+        alert(`저장 중 오류 발생: ${err.message}`);
       }
     } else {
       // Add new
@@ -204,12 +233,25 @@ export const App: React.FC = () => {
         aiResult: null
       };
 
-      setEvaluations((prev) => [targetEval, ...prev]);
-      setSelectedEvalId(newId);
-      
-      setCurrentScreen("report");
-      
-      await generateAIReportForEval(targetEval);
+      try {
+        // DB에 POST 추가 요청
+        const res = await fetch("/api/evaluations", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(targetEval),
+        });
+
+        if (!res.ok) throw new Error("DB 신규 저장 요청에 실패했습니다.");
+
+        setEvaluations((prev) => [targetEval, ...prev]);
+        setSelectedEvalId(newId);
+        setCurrentScreen("report");
+        
+        await generateAIReportForEval(targetEval);
+      } catch (err: any) {
+        console.error(err);
+        alert(`저장 중 오류 발생: ${err.message}`);
+      }
     }
   };
 
@@ -223,10 +265,20 @@ export const App: React.FC = () => {
     setCurrentScreen("input");
   };
 
-  const handleDeleteEvaluation = (id: string) => {
+  const handleDeleteEvaluation = async (id: string) => {
     if (window.confirm("정말로 이 평가 채점 기록을 삭제하시겠습니까?")) {
-      setEvaluations((prev) => prev.filter((e) => e.id !== id));
-      if (selectedEvalId === id) setSelectedEvalId(null);
+      try {
+        const res = await fetch(`/api/evaluations/${id}`, {
+          method: "DELETE"
+        });
+        if (!res.ok) throw new Error("DB 삭제 요청에 실패했습니다.");
+
+        setEvaluations((prev) => prev.filter((e) => e.id !== id));
+        if (selectedEvalId === id) setSelectedEvalId(null);
+      } catch (err: any) {
+        console.error(err);
+        alert(`삭제 중 오류 발생: ${err.message}`);
+      }
     }
   };
 
