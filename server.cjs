@@ -333,6 +333,9 @@ app.get('/api/evaluations', async (req, res) => {
 // 2. POST /api/evaluations - 신규 채점 기록 등록
 app.post('/api/evaluations', async (req, res) => {
   const { id, studentName, grade, subject, examType, mentorName, mentorNotes, answers, date, aiResult } = req.body;
+  console.log(`\n📥 [POST /api/evaluations] 신규 등록 요청 수신`);
+  console.log(`   학생명: ${studentName}, 학년: ${grade}, 과목: ${subject}, 회차: ${examType}`);
+  console.log(`   pool 상태: ${pool ? '✅ DB 연결됨' : '❌ 인메모리 모드'}`);
   if (pool) {
     try {
       const insertQuery = `
@@ -351,12 +354,15 @@ app.post('/api/evaluations', async (req, res) => {
         date,
         aiResult ? JSON.stringify(aiResult) : null
       ]);
+      console.log(`✅ [DB INSERT 성공] ${studentName} 학생 데이터 저장 완료 (id: ${id})`);
       return res.status(201).json({ success: true });
     } catch (err) {
-      console.error('❌ evaluations 추가 실패:', err.message);
-      return res.status(500).json({ error: 'DB 저장 도중 에러가 발생했습니다.' });
+      console.error(`❌ [DB INSERT 실패] evaluations 추가 실패: ${err.message}`);
+      console.error(`   오류 상세:`, err);
+      return res.status(500).json({ error: 'DB 저장 도중 에러가 발생했습니다.', detail: err.message });
     }
   } else {
+    console.warn(`⚠️ [인메모리 저장] DB 미연결 상태 - ${studentName} 데이터를 메모리에만 저장합니다.`);
     const newEval = { id, studentName, grade, subject, examType, mentorName, mentorNotes, answers, date, aiResult };
     inMemoryEvaluations.unshift(newEval);
     return res.status(201).json({ success: true });
@@ -530,8 +536,37 @@ app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok', 
     message: 'LARS API 서버 정상 작동 중',
-    apiKey: process.env.ANTHROPIC_API_KEY ? '✅ 설정됨' : '❌ 없음'
+    apiKey: process.env.ANTHROPIC_API_KEY ? '✅ 설정됨' : '❌ 없음',
+    dbMode: pool ? '✅ PostgreSQL 연결됨' : '⚠️ 인메모리 모드'
   });
+});
+
+// DB 실제 상태 확인용 디버그 엔드포인트
+app.get('/api/db-status', async (req, res) => {
+  if (!pool) {
+    return res.json({
+      mode: 'inmemory',
+      message: '⚠️ DB 미연결 - 인메모리 모드로 동작 중',
+      inMemoryCount: inMemoryEvaluations.length,
+      inMemoryStudents: inMemoryEvaluations.map(e => e.studentName)
+    });
+  }
+  try {
+    const countRes = await pool.query('SELECT COUNT(*) as cnt FROM evaluations');
+    const listRes = await pool.query('SELECT id, student_name, exam_type, created_at FROM evaluations ORDER BY created_at DESC');
+    return res.json({
+      mode: 'postgresql',
+      message: '✅ PostgreSQL DB 연결 정상',
+      totalRecords: parseInt(countRes.rows[0].cnt, 10),
+      records: listRes.rows
+    });
+  } catch (err) {
+    return res.status(500).json({
+      mode: 'error',
+      message: '❌ DB 조회 실패',
+      error: err.message
+    });
+  }
 });
 
 // ── [추가] 배포 환경을 위한 React 정적 파일(dist) 통합 서빙 ────────────────────
