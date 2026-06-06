@@ -1,11 +1,11 @@
-// server.cjs - 독립 Express API 서버 (Anthropic Claude 연동)
+// server.cjs - 독립 Express API 서버 (Anthropic Claude 연동 - 최적화 통합 버전)
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 
-// .env.local 파일 수동 로드
-function loadEnvFile() {
+// [수정] 시스템 환경변수(Railway)와 로컬 파일(.env.local)을 가장 완벽하게 크로싱하여 바인딩
+function loadEnv() {
   const envPath = path.join(__dirname, '.env.local');
   if (fs.existsSync(envPath)) {
     const lines = fs.readFileSync(envPath, 'utf-8').split('\n');
@@ -21,27 +21,55 @@ function loadEnvFile() {
         }
       }
     }
-    console.log('✅ .env.local 로드 완료');
+    console.log('✅ .env.local 파일 환경변수 로드 완료');
   } else {
-    console.warn('⚠️  .env.local 파일이 없습니다.');
+    console.log('ℹ️  .env.local 파일이 존재하지 않습니다. 시스템 환경변수를 직접 활용합니다.');
   }
 }
 
-loadEnvFile();
+// 1. 최상단 환경변수 즉시 취합 가동
+loadEnv();
 
 const Anthropic = require('@anthropic-ai/sdk');
 const { Pool } = require('pg');
 
-// Railway는 DATABASE_URL 환경변수를 자동으로 넣어줍니다.
+// [수정] 시스템(process.env)에 적재된 변수를 직접 가져오도록 강제 바인딩 보장
 const rawDbUrl = process.env.DATABASE_URL;
 const isDbConfigured = !!rawDbUrl;
 
-console.log(`\n🔍 DATABASE_URL 환경변수 상태: ${isDbConfigured ? '✅ 존재함' : '❌ 없음'}`);
-if (rawDbUrl) {
-  // 비밀번호 마스킹 후 일부만 출력
-  const maskedUrl = rawDbUrl.replace(/:([^@]+)@/, ':****@');
-  console.log(`   URL(마스킹): ${maskedUrl}`);
+console.log(`\n🔍 DATABASE_URL 환경변수 검증 상태: ${isDbConfigured ? '✅ 존재함' : '❌ 없음'}`);
+
+let pool = null;
+let dbError = null;
+
+if (isDbConfigured) {
+  try {
+    const maskedUrl = rawDbUrl.replace(/:([^@]+)@/, ':****@');
+    console.log(`   수립될 데이터베이스 URL(마스킹): ${maskedUrl}`);
+
+    const isInternalUrl = rawDbUrl.includes('railway.internal');
+    const isPublicProxy = rawDbUrl.includes('rlwy.net');
+
+    pool = new Pool({
+      connectionString: rawDbUrl,
+      ssl: isInternalUrl
+        ? false
+        : { rejectUnauthorized: false },
+      connectionTimeoutMillis: 10000,
+      idleTimeoutMillis: 30000,
+      max: 5
+    });
+    console.log(`🐘 PostgreSQL 연결 풀 생성 완료 (${isInternalUrl ? '내부 네트워크' : isPublicProxy ? '공개 프록시(rlwy.net)' : '외부 URL'} 모드)`);
+  } catch (poolErr) {
+    console.error('❌ Pool 생성 실패:', poolErr.message);
+    dbError = poolErr.message;
+    pool = null;
+  }
+} else {
+  console.warn('⚠️ DATABASE_URL 환경변수가 누락되었습니다. DB 없이 인메모리(임시) 모드로 동작합니다.');
+  dbError = 'DATABASE_URL 환경변수가 설정되지 않았습니다.';
 }
+
 
 let pool = null;
 let dbError = null;
