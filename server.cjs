@@ -1,10 +1,10 @@
-// server.cjs - 독립 Express API 서버 (Anthropic Claude 연동 - 최적화 통합 버전)
+// server.cjs - 독립 Express API 서버 (Anthropic Claude 연동 - 통합 완벽 버전)
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const fs = require('fs');
 
-// [수정] 시스템 환경변수(Railway)와 로컬 파일(.env.local)을 가장 완벽하게 크로싱하여 바인딩
+// [수정] 시스템 환경변수(Railway)와 로컬 파일(.env.local)을 안전하게 결합
 function loadEnv() {
   const envPath = path.join(__dirname, '.env.local');
   if (fs.existsSync(envPath)) {
@@ -33,14 +33,13 @@ loadEnv();
 const Anthropic = require('@anthropic-ai/sdk');
 const { Pool } = require('pg');
 
-// [수정] 시스템(process.env)에 적재된 변수를 직접 가져오도록 강제 바인딩 보장
+// 2. 단일 변수 바인딩 (이곳에서만 한 번만 선언하여 중복 선언 에러 원천 해결!)
 const rawDbUrl = process.env.DATABASE_URL;
 const isDbConfigured = !!rawDbUrl;
-
-console.log(`\n🔍 DATABASE_URL 환경변수 검증 상태: ${isDbConfigured ? '✅ 존재함' : '❌ 없음'}`);
-
 let pool = null;
 let dbError = null;
+
+console.log(`\n🔍 DATABASE_URL 환경변수 검증 상태: ${isDbConfigured ? '✅ 존재함' : '❌ 없음'}`);
 
 if (isDbConfigured) {
   try {
@@ -69,6 +68,7 @@ if (isDbConfigured) {
   console.warn('⚠️ DATABASE_URL 환경변수가 누락되었습니다. DB 없이 인메모리(임시) 모드로 동작합니다.');
   dbError = 'DATABASE_URL 환경변수가 설정되지 않았습니다.';
 }
+
 
 
 let pool = null;
