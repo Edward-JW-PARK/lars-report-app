@@ -1,105 +1,39 @@
-import React, { useRef } from 'react';
+import React, { useState } from "react";
+import { Plus, Eye, Edit2, Trash2, TrendingUp, Award, FileText, Printer, Sparkles } from "lucide-react";
+import { calculateReportStats } from "../utils/reportGenerator";
 
 // ==========================================
-// 1. TYPE DEFINITIONS & INTERFACES (App.tsx와 완전 호환되도록 수정)
+// 1. TYPE DEFINITIONS & INTERFACES (원본 100% 동일 유지)
 // ==========================================
 export interface Evaluation {
   id: string;
   studentName: string;
-  grade: string | any; // App.tsx의 유니온 타입과 호환되도록 허용
-  subject: string | any; // App.tsx의 유니온 타입과 호환되도록 허용
-  examType: string;
+  grade: "middle_1" | "middle_2" | "middle_3";
+  subject: "math" | "english";
+  examType: "사전" | "중간" | "사후";
   mentorName: string;
   mentorNotes: string;
-  answers: { [key: string]: any } | any; // { [q_idx: number]: boolean } 과도 유연하게 호환
+  answers: { [q_idx: number]: boolean };
   date: string;
-  aiResult?: {
-    isOutcomeReport?: boolean;
-    overallAnalysis: string;
-    conceptAnalysis: string;
-    coachingPrescription: string;
-    actionPlan: string;
-  };
+  aiResult?: any;
 }
 
 interface DashboardScreenProps {
-  evaluations: any[]; // App.tsx의 Evaluation[] 배열과 유연한 매핑을 위해 any[] 또는 해당 타입 허용
+  evaluations: Evaluation[];
   onAddNew: () => void;
   onView: (id: string) => void;
   onEdit: (id: string) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => Promise<void> | void;
   isGeneratingAI: boolean;
-  onGenerateFinalOutcome: (studentName: string, grade: any, subject: any) => Promise<void>; // grade, subject 타입을 any로 유연화하여 호환성 확보
+  onGenerateFinalOutcome?: (
+    studentName: string,
+    grade: "middle_1" | "middle_2" | "middle_3",
+    subject: "math" | "english"
+  ) => Promise<void>;
 }
 
 // ==========================================
-// 2. HELPER FUNCTIONS
-// ==========================================
-const getSubjectLabel = (subject: string): string => {
-  const mapping: { [key: string]: string } = {
-    math: '수학',
-    english: '영어',
-    korean: '국어',
-    science: '과학',
-  };
-  return mapping[subject] || subject;
-};
-
-const getGradeLabel = (grade: string): string => {
-  const mapping: { [key: string]: string } = {
-    'm1': '중등 1학년',
-    'm2': '중등 2학년',
-    'm3': '중등 3학년',
-    'middle_1': '중등 1학년',
-    'middle_2': '중등 2학년',
-    'middle_3': '중등 3학년',
-    'h1': '고등 1학년',
-    'h2': '고등 2학년',
-    'h3': '고등 3학년',
-  };
-  return mapping[grade] || grade;
-};
-
-// 회차별 성적 계산 및 통계 추출
-const calculateReportStats = (studentEvals: any[]) => {
-  // 사전, 중간, 사후로 분류
-  const preEval = studentEvals.find(e => e.examType === '사전' || e.examType === '1회차');
-  const midEval = studentEvals.find(e => e.examType === '중간' || e.examType === '2회차');
-  const postEval = studentEvals.find(e => e.examType === '사후' || e.examType === '3회차');
-
-  const getScore = (evalItem?: any) => {
-    if (!evalItem || !evalItem.answers) return null;
-    const total = Object.keys(evalItem.answers).length;
-    if (total === 0) return 0;
-    
-    // answers의 키값(문항)의 벨류가 참('O', '정답', true)인 문항들의 수 계산
-    const correct = Object.values(evalItem.answers).filter(v => v === 'O' || v === '정답' || v === true).length;
-    return Math.round((correct / total) * 100);
-  };
-
-  const preScore = getScore(preEval);
-  const midScore = getScore(midEval);
-  const postScore = getScore(postEval);
-
-  // 성장도 계산 (사후 - 사전)
-  let growth = 0;
-  if (postScore !== null && preScore !== null) {
-    growth = postScore - preScore;
-  }
-
-  return {
-    preEval,
-    midEval,
-    postEval,
-    preScore,
-    midScore,
-    postScore,
-    growth
-  };
-};
-
-// ==========================================
-// 3. MAIN COMPONENT
+// 2. MAIN COMPONENT
 // ==========================================
 export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   evaluations,
@@ -110,574 +44,646 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   isGeneratingAI,
   onGenerateFinalOutcome,
 }) => {
-  // 화면 모드 상태: 'list' (대시보드 목록) 또는 'outcome' (최종 성과결과 리포트 상세 인쇄 뷰)
-  const [viewMode, setViewMode] = React.useState<'list' | 'outcome'>('list');
-  const [selectedGroup, setSelectedGroup] = React.useState<{ studentName: string; grade: any; subject: any } | null>(null);
+  const [selectedStudent, setSelectedStudent] = useState<string>("");
+  const [showFinalReport, setShowFinalReport] = useState(false);
 
-  const printAreaRef = useRef<HTMLDivElement>(null);
+  // 고유 학생 목록 추출
+  const students = Array.from(new Set(evaluations.map((e) => e.studentName)));
 
-  // 학생별 그룹화 처리 (이름, 학년, 과목 기준)
-  const groupedEvaluations = React.useMemo(() => {
-    const groups: { [key: string]: any[] } = {};
-    evaluations.forEach((item) => {
-      const key = `${item.studentName}_${item.grade}_${item.subject}`;
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(item);
+  // 선택된 학생의 평가 이력을 회차순으로 정렬
+  const studentEvals = evaluations
+    .filter((e) => e.studentName === selectedStudent)
+    .sort((a, b) => {
+      const order = { "사전": 1, "중간": 2, "사후": 3 };
+      return order[a.examType] - order[b.examType];
     });
-    return groups;
-  }, [evaluations]);
 
-  // 성과보고서 발행을 트리거하는 함수
-  const handleLaunchOutcomeReport = async (studentName: string, grade: any, subject: any) => {
-    setSelectedGroup({ studentName, grade, subject });
-    const key = `${studentName}_${grade}_${subject}`;
-    const groupEvals = groupedEvaluations[key] || [];
-    
-    // 가장 최신 회차의 AI 성과보고서 데이터 유무 판별
-    const sorted = [...groupEvals].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    const latestEval = sorted[0];
-    const hasValidOutcomeAI = latestEval?.aiResult?.isOutcomeReport && latestEval?.aiResult?.overallAnalysis;
+  const getGradeLabel = (g: string) => {
+    switch (g) {
+      case "middle_1": return "중학교 1학년";
+      case "middle_2": return "중학교 2학년";
+      case "middle_3": return "중학교 3학년";
+      default: return g;
+    }
+  };
 
-    if (!hasValidOutcomeAI) {
-      // 분석 데이터가 없거나 무효한 경우 새로 생성 호출
+  const getSubjectLabel = (s: string) => {
+    return s === "math" ? "수학" : "영어";
+  };
+
+  // 사전, 중간, 사후 평가 인스턴스 검색
+  const preEval = studentEvals.find((e) => e.examType === "사전");
+  const midEval = studentEvals.find((e) => e.examType === "중간");
+  const postEval = studentEvals.find((e) => e.examType === "사후");
+
+  // 외부 유틸리티 기반의 점수 계산 처리
+  const preScore = preEval ? calculateReportStats(preEval.grade, preEval.subject, preEval.answers).score : null;
+  const midScore = midEval ? calculateReportStats(midEval.grade, midEval.subject, midEval.answers).score : null;
+  const postScore = postEval ? calculateReportStats(postEval.grade, postEval.subject, postEval.answers).score : null;
+
+  let growth = 0;
+  if (preScore !== null && postScore !== null) {
+    growth = postScore - preScore;
+  } else if (preScore !== null && midScore !== null) {
+    growth = midScore - preScore;
+  }
+
+  // AI 최종 리포트 결과 바인딩용 타겟 검색 (사후 -> 중간 -> 사전 순)
+  const latestEval = postEval || midEval || preEval;
+  
+  // 최종 성과분석 마커가 명확히 주입된 데이터만 인정
+  const aiReportData = latestEval?.aiResult || {};
+  const hasValidOutcomeAI = !!(aiReportData.isOutcomeReport && aiReportData.overallAnalysis && aiReportData.overallAnalysis.trim());
+
+  const handleLaunchOutcomeReport = async () => {
+    setShowFinalReport(true);
+    if (!hasValidOutcomeAI && onGenerateFinalOutcome && latestEval) {
       try {
-        await onGenerateFinalOutcome(studentName, grade, subject);
+        await onGenerateFinalOutcome(latestEval.studentName, latestEval.grade, latestEval.subject);
       } catch (err) {
-        console.error("AI 성과 정밀 분석 생성 중 오류 발생:", err);
+        console.error("AI 성과보고 생성 에러:", err);
       }
     }
-    setViewMode('outcome');
   };
 
-  // 인쇄 처리 함수
   const handlePrintFinalReport = () => {
-    const printContent = printAreaRef.current?.innerHTML;
-    if (!printContent) return;
-
-    const originalBody = document.body.innerHTML;
-    const originalStyle = document.body.style.cssText;
-
-    document.body.innerHTML = `
-      <style>
-        @media print {
-          body {
-            margin: 0;
-            padding: 0;
-            background: #fff;
-          }
-          .a4-page {
-            width: 210mm;
-            height: 296mm;
-            page-break-after: always;
-            box-sizing: border-box;
-            padding: 20mm 15mm !important;
-            margin: 0 auto !important;
-            box-shadow: none !important;
-            border: none !important;
-            position: relative;
-            overflow: hidden;
-          }
-          .no-print {
-            display: none !important;
-          }
-        }
-      </style>
-      <div style="background-color: #f3f4f6; padding: 20px 0;" class="no-print">
-        <div style="max-width: 800px; margin: 0 auto; text-align: center;">
-          <p style="margin-bottom: 10px; font-weight: bold; color: #1f2937;">PDF 인쇄 설정 안내</p>
-          <p style="font-size: 13px; color: #4b5563; line-height: 1.5;">
-            배경 그래픽 인쇄를 <strong>[켬/활성화]</strong> 해주시고, 머리글/바닥글 옵션은 <strong>[해제]</strong> 해주셔야 템플릿의 색상과 여백이 온전히 인쇄됩니다.
-          </p>
-        </div>
-      </div>
-      <div>${printContent}</div>
-    `;
-
-    window.print();
-    // 원래 상태로 즉시 복구
-    document.body.innerHTML = originalBody;
-    document.body.style.cssText = originalStyle;
-    window.location.reload(); 
+    const originalOverflow = document.body.style.overflow;
+    const originalHeight = document.body.style.height;
+    
+    document.body.style.overflow = "visible";
+    document.body.style.height = "auto";
+    
+    setTimeout(() => {
+      window.print();
+      document.body.style.overflow = originalOverflow;
+      document.body.style.height = originalHeight;
+    }, 50);
   };
 
-  if (viewMode === 'outcome' && selectedGroup) {
-    const { studentName, grade, subject } = selectedGroup;
-    const key = `${studentName}_${grade}_${subject}`;
-    const groupEvals = groupedEvaluations[key] || [];
-
-    // 회차별 데이터 분석 바인딩
-    const {
-      preEval,
-      midEval,
-      postEval,
-      preScore,
-      midScore,
-      postScore,
-      growth
-    } = calculateReportStats(groupEvals);
-
-    const sorted = [...groupEvals].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-    const latestEval = sorted[0];
-    const aiResult = latestEval?.aiResult;
-
+  // ==========================================
+  // 3. 성과 보고서 상세 & 프린트 뷰 (LARS 6.pdf 완벽 미러링)
+  // ==========================================
+  if (showFinalReport && selectedStudent) {
     return (
-      <div className="min-h-screen bg-gray-100 py-8 px-4 sm:px-6 lg:px-8">
-        {/* 상단 컨트롤 바 */}
-        <div className="max-w-[210mm] mx-auto mb-6 flex justify-between items-center bg-white p-4 rounded-lg shadow-sm">
-          <button
-            onClick={() => setViewMode('list')}
-            className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded text-sm font-medium transition"
-          >
-            ← 대시보드 목록으로
+      <div className="report-workspace-container" style={{ minHeight: "auto", overflow: "visible", backgroundColor: "#f1f5f9", padding: "2rem 0" }}>
+        
+        {/* 우측 상단 플로팅 액션 바 */}
+        <div className="workspace-actions-floating" style={{ position: "fixed", top: "20px", right: "20px", zIndex: 1000, display: "flex", gap: "0.5rem" }}>
+          <button className="btn btn-secondary" onClick={() => setShowFinalReport(false)} style={{ boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }}>
+            대시보드로 돌아가기
           </button>
-          <div className="flex gap-2">
-            {!aiResult?.isOutcomeReport && (
-              <button
-                onClick={() => handleLaunchOutcomeReport(studentName, grade, subject)}
-                disabled={isGeneratingAI}
-                className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-sm font-medium transition disabled:bg-indigo-300"
-              >
-                {isGeneratingAI ? 'AI 성과 분석중...' : '🔄 AI 성과 재분석 실행'}
-              </button>
-            )}
-            <button
-              onClick={handlePrintFinalReport}
-              className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-sm font-medium transition"
+          
+          {onGenerateFinalOutcome && latestEval && (
+            <button 
+              className="btn btn-warning" 
+              onClick={() => onGenerateFinalOutcome(latestEval.studentName, latestEval.grade, latestEval.subject)}
+              disabled={isGeneratingAI}
+              style={{ backgroundColor: "#d97706", borderColor: "#d97706", color: "white", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)", display: "flex", alignItems: "center", gap: "0.3rem" }}
             >
-              🖨 리포트 PDF 출력 / 인쇄
+              <Sparkles size={14} /> {isGeneratingAI ? "AI 분석 생성 중..." : "AI 성과 정밀 분석"}
             </button>
-          </div>
+          )}
+
+          <button className="btn btn-primary" onClick={handlePrintFinalReport} style={{ backgroundColor: "#1e3a8a", borderColor: "#1e3a8a", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }}>
+            <Printer size={16} /> 보고서 인쇄 및 PDF 저장
+          </button>
         </div>
 
-        {/* =========================================================================
-            최종 성과결과 리포트 출력 뷰 영역 (A4 규격 강제 매칭 2페이지)
-            ========================================================================= */}
-        <div ref={printAreaRef} className="flex flex-col items-center gap-8">
-          
-          {/* ----------------------------------------------------
-              PAGE 1: 성취 추이 및 회차별 성적 대조표 (LARS 6.pdf 형식)
-              ---------------------------------------------------- */}
-          <div className="a4-page bg-white shadow-lg border border-gray-200" style={{ width: '210mm', height: '296mm', padding: '20mm 15mm', boxSizing: 'border-box', position: 'relative' }}>
-            
-            {/* 상단 헤더 영역 */}
-            <div className="flex justify-between items-start border-b-2 border-indigo-900 pb-4 mb-6">
-              <div>
-                <span className="bg-indigo-900 text-white text-xs px-2 py-1 rounded font-bold mr-2">SGS LEARNWAY</span>
-                <h1 className="text-2xl font-black text-gray-950 inline-block align-middle">학습성과 진단 종합 리포트</h1>
-                <p className="text-xs text-gray-500 mt-1">Learnway Achievement Analysis Report System (LARS)</p>
+        {/* ----------------- PAGE 1: 정량 분석 & 성취 트렌드 페이지 (LARS 6.pdf Page 1 완벽 미러링) ----------------- */}
+        <div className="report-a4-page" style={{ 
+          pageBreakAfter: "always", 
+          breakAfter: "page", 
+          width: "210mm",
+          height: "296mm", 
+          boxSizing: "border-box", 
+          backgroundColor: "#ffffff", 
+          boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)",
+          padding: "18mm 18mm", 
+          margin: "0 auto",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between",
+          fontFamily: "inherit"
+        }}>
+          <div>
+            {/* 헤더 타이틀 */}
+            <div className="report-header" style={{ borderBottom: "3px solid #1e3a8a", paddingBottom: "0.8rem", marginBottom: "1rem" }}>
+              <div style={{ fontSize: "0.65rem", color: "#1e3a8a", fontWeight: "bold", letterSpacing: "1px", marginBottom: "0.2rem" }}>
+                LEARNWAY SCHOOL MENTORING OUTCOME REPORT
               </div>
-              <div className="text-right">
-                <span className="text-xs font-bold text-indigo-950 block bg-indigo-50 px-2 py-1 rounded">최종 성장 리포트</span>
-                <span className="text-xs text-gray-400 block mt-1">발행일: {latestEval?.date || '-'}</span>
+              <div className="report-title" style={{ fontSize: "1.6rem", fontWeight: 800, color: "#1e3a8a", lineHeight: 1.2 }}>
+                Learnway 멘토링 프로젝트 최종 성과보고서
               </div>
-            </div>
-
-            {/* 학생 인적 정보 카드 */}
-            <div className="grid grid-cols-4 gap-4 bg-gray-50 p-4 rounded-lg mb-6 border border-gray-200">
-              <div className="text-center border-r border-gray-200">
-                <span className="text-xs text-gray-400 block">학생명</span>
-                <span className="font-bold text-gray-800 text-sm">{studentName}</span>
-              </div>
-              <div className="text-center border-r border-gray-200">
-                <span className="text-xs text-gray-400 block">대상 학년</span>
-                <span className="font-bold text-gray-800 text-sm">{getGradeLabel(grade)}</span>
-              </div>
-              <div className="text-center border-r border-gray-200">
-                <span className="text-xs text-gray-400 block">진단 과목</span>
-                <span className="font-bold text-gray-800 text-sm">{getSubjectLabel(subject)}</span>
-              </div>
-              <div className="text-center">
-                <span className="text-xs text-indigo-500 font-bold block">학습 성장도</span>
-                <span className="font-black text-indigo-600 text-sm">+{growth} %p</span>
+              <div style={{ marginTop: "0.3rem", fontSize: "0.75rem", color: "#4b5563", fontWeight: 500 }}>
+                프로젝트 기간 동안 일어난 학생의 학업 성취 변화 및 종합적인 코칭 성과를 요약 보고합니다.
               </div>
             </div>
 
-            {/* ① 학업 성취 점수 추이 및 성장 곡선 */}
-            <div className="mb-6">
-              <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center">
-                <span className="w-1.5 h-3.5 bg-indigo-900 rounded-sm mr-2 inline-block"></span>
-                ① 학업 성취 점수 추이 및 성장 곡선
-              </h3>
-              <div className="bg-white border border-gray-200 rounded-lg p-4 flex flex-col items-center">
-                
-                {/* SVG 성장 곡선 그래프 */}
-                <div className="w-full max-w-[400px] h-[150px] relative mb-3">
-                  <svg viewBox="0 0 300 120" className="w-full h-full">
-                    {/* 격자선 */}
-                    <line x1="20" y1="10" x2="280" y2="10" stroke="#f0f0f0" strokeWidth="1" />
-                    <line x1="20" y1="50" x2="280" y2="50" stroke="#f0f0f0" strokeWidth="1" />
-                    <line x1="20" y1="90" x2="280" y2="90" stroke="#e0e0e0" strokeWidth="1" strokeDasharray="3,3" />
-                    <line x1="20" y1="110" x2="280" y2="110" stroke="#ccc" strokeWidth="1" />
+            {/* 인적사항 메타 그리드 (4단 수평 배치) */}
+            <div className="report-student-meta" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.8rem", marginBottom: "1.2rem" }}>
+              <div className="meta-box" style={{ border: "1px solid #e5e7eb", borderRadius: "5px", padding: "0.5rem", display: "flex", flexDirection: "column" }}>
+                <span style={{ fontSize: "0.65rem", color: "#6b7280", fontWeight: "bold", marginBottom: "0.15rem" }}>학생명</span>
+                <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#111827" }}>{selectedStudent}</span>
+              </div>
+              <div className="meta-box" style={{ border: "1px solid #e5e7eb", borderRadius: "5px", padding: "0.5rem", display: "flex", flexDirection: "column" }}>
+                <span style={{ fontSize: "0.65rem", color: "#6b7280", fontWeight: "bold", marginBottom: "0.15rem" }}>과목 / 학년</span>
+                <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#111827" }}>
+                  {latestEval ? `${getSubjectLabel(latestEval.subject)} / ${getGradeLabel(latestEval.grade)}` : "-"}
+                </span>
+              </div>
+              <div className="meta-box" style={{ border: "1px solid #e5e7eb", borderRadius: "5px", padding: "0.5rem", display: "flex", flexDirection: "column" }}>
+                <span style={{ fontSize: "0.65rem", color: "#6b7280", fontWeight: "bold", marginBottom: "0.15rem" }}>총 평가 횟수</span>
+                <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#111827" }}>{studentEvals.length}회 (사전/중간/사후)</span>
+              </div>
+              <div className="meta-box" style={{ border: "1px solid #e5e7eb", borderRadius: "5px", padding: "0.5rem", display: "flex", flexDirection: "column", backgroundColor: "#f0fdf4" }}>
+                <span style={{ fontSize: "0.65rem", color: "#16a34a", fontWeight: "bold", marginBottom: "0.15rem" }}>최종 성장도</span>
+                <span style={{ fontSize: "0.85rem", fontWeight: "black", color: "#15803d" }}>
+                  {growth >= 0 ? `+${growth}점` : `${growth}점`}
+                </span>
+              </div>
+            </div>
 
-                    {/* 축 가이드 텍스트 */}
-                    <text x="12" y="15" fill="#aaa" fontSize="6" textAnchor="end">100</text>
-                    <text x="12" y="55" fill="#aaa" fontSize="6" textAnchor="end">50</text>
-                    <text x="12" y="113" fill="#aaa" fontSize="6" textAnchor="end">0</text>
+            {/* 1. 학업 성취 점수 추이 및 성장 곡선 */}
+            <div className="report-section" style={{ marginBottom: "1.2rem" }}>
+              <div className="section-title-container" style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.6rem" }}>
+                <span style={{ backgroundColor: "#1e3a8a", color: "#fff", width: "1.1rem", height: "1.1rem", borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.7rem" }}>1</span>
+                <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#1e3a8a" }}>학업 성취 점수 추이 및 성장 곡선</span>
+              </div>
 
-                    {/* 회차 표기 */}
-                    <text x="50" y="118" fill="#666" fontSize="7" textAnchor="middle" fontWeight="bold">사전 (1회차)</text>
-                    <text x="150" y="118" fill="#666" fontSize="7" textAnchor="middle" fontWeight="bold">중간 (2회차)</text>
-                    <text x="250" y="118" fill="#666" fontSize="7" textAnchor="middle" fontWeight="bold">사후 (3회차)</text>
+              {/* 평가 3단계 병렬 요약 카드 (LARS 6.pdf 원본 미러링) */}
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.8rem", marginBottom: "1rem" }}>
+                <div style={{ border: "1px solid #e2e8f0", borderRadius: "6px", padding: "0.6rem", textAlign: "center" }}>
+                  <div style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: "bold", marginBottom: "0.2rem" }}>사전 평가</div>
+                  <div style={{ fontSize: "1.1rem", fontWeight: "black", color: "#1e293b" }}>{preScore !== null ? `${preScore}점` : "-"}</div>
+                  <div style={{ fontSize: "0.6rem", color: "#94a3b8", marginTop: "0.15rem" }}>{preEval?.date || "2026. 6. 7."}</div>
+                </div>
+                <div style={{ border: "1px solid #e2e8f0", borderRadius: "6px", padding: "0.6rem", textAlign: "center" }}>
+                  <div style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: "bold", marginBottom: "0.2rem" }}>중간 평가</div>
+                  <div style={{ fontSize: "1.1rem", fontWeight: "black", color: "#1e293b" }}>{midScore !== null ? `${midScore}점` : "-"}</div>
+                  <div style={{ fontSize: "0.6rem", color: "#94a3b8", marginTop: "0.15rem" }}>{midEval?.date || "2026. 6. 7."}</div>
+                </div>
+                <div style={{ border: "1px solid #e2e8f0", borderRadius: "6px", padding: "0.6rem", textAlign: "center", backgroundColor: "#fef2f2", borderColor: "#fecaca" }}>
+                  <div style={{ fontSize: "0.7rem", color: "#ef4444", fontWeight: "bold", marginBottom: "0.2rem" }}>사후 평가</div>
+                  <div style={{ fontSize: "1.1rem", fontWeight: "black", color: "#b91c1c" }}>{postScore !== null ? `${postScore}점` : "-"}</div>
+                  <div style={{ fontSize: "0.6rem", color: "#ef4444", marginTop: "0.15rem" }}>{postEval?.date || "2026. 6. 7."}</div>
+                </div>
+              </div>
 
-                    {/* 라인 렌더링 */}
-                    {preScore !== null && postScore !== null && (
-                      <line
-                        x1="50"
-                        y1={110 - (preScore / 100) * 100}
-                        x2="250"
-                        y2={110 - (postScore / 100) * 100}
-                        stroke="#6366f1"
-                        strokeWidth="3"
-                        strokeLinecap="round"
+              {/* 성장 지표 트렌드 (Trend Graph) SVG */}
+              <div style={{ border: "1px solid #e2e8f0", borderRadius: "6px", padding: "0.8rem", backgroundColor: "#f8fafc" }}>
+                <div style={{ fontSize: "0.7rem", color: "#334155", fontWeight: "bold", marginBottom: "0.4rem", textAlign: "center" }}>성장 지표 트렌드 (Trend Graph)</div>
+                <div style={{ display: "flex", justifyContent: "center", alignItems: "center", height: "100px" }}>
+                  <svg width="100%" height="90" viewBox="0 0 300 90" style={{ overflow: "visible" }}>
+                    {/* 가로 보조선 및 눈금값 */}
+                    <line x1="30" y1="10" x2="270" y2="10" stroke="#e2e8f0" strokeWidth="1" />
+                    <text x="22" y="13" fontSize="6.5" fill="#94a3b8" textAnchor="end">100</text>
+
+                    <line x1="30" y1="50" x2="270" y2="50" stroke="#e2e8f0" strokeWidth="1" strokeDasharray="3,3" />
+                    <text x="22" y="53" fontSize="6.5" fill="#94a3b8" textAnchor="end">50</text>
+
+                    <line x1="30" y1="80" x2="270" y2="80" stroke="#cbd5e1" strokeWidth="1" />
+                    <text x="22" y="83" fontSize="6.5" fill="#94a3b8" textAnchor="end">0</text>
+
+                    {/* 트렌드 곡선 렌더링 (사전 -> 중간 -> 사후) */}
+                    {preScore !== null && (
+                      <path
+                        d={
+                          midScore !== null && postScore !== null
+                            ? `M 50 ${80 - preScore * 0.7} L 150 ${80 - midScore * 0.7} L 250 ${80 - postScore * 0.7}`
+                            : `M 50 ${80 - preScore * 0.7} L 250 ${80 - (postScore ?? midScore ?? 0) * 0.7}`
+                        }
+                        fill="none"
+                        stroke="#ef4444"
+                        strokeWidth="2"
                       />
                     )}
-                    {preScore !== null && midScore !== null && (
-                      <line
-                        x1="50"
-                        y1={110 - (preScore / 100) * 100}
-                        x2="150"
-                        y2={110 - (midScore / 100) * 100}
-                        stroke="#818cf8"
-                        strokeWidth="2.5"
-                      />
-                    )}
-                    {midScore !== null && postScore !== null && (
-                      <line
-                        x1="150"
-                        y1={110 - (midScore / 100) * 100}
-                        x2="250"
-                        y2={110 - (postScore / 100) * 100}
-                        stroke="#4f46e5"
-                        strokeWidth="2.5"
-                      />
-                    )}
 
-                    {/* 사전 데이터 포인트 */}
+                    {/* 사전 노드 */}
                     {preScore !== null && (
                       <g>
-                        <circle cx="50" cy={110 - (preScore / 100) * 100} r="5" fill="#818cf8" stroke="#fff" strokeWidth="1.5" />
-                        <text x="50" y={110 - (preScore / 100) * 100 - 8} fill="#4f46e5" fontSize="8" fontWeight="black" textAnchor="middle">{preScore}점</text>
+                        <circle cx="50" cy={80 - preScore * 0.7} r="3" fill="#ffffff" stroke="#1e3a8a" strokeWidth="2" />
+                        <text x="50" y={80 - preScore * 0.7 - 7} fontSize="7" fill="#1e3a8a" fontWeight="bold" textAnchor="middle">{preScore}점</text>
+                        <text x="50" y="89" fontSize="6.5" fill="#64748b" textAnchor="middle" fontWeight="bold">사전</text>
                       </g>
                     )}
 
-                    {/* 중간 데이터 포인트 */}
+                    {/* 중간 노드 */}
                     {midScore !== null && (
                       <g>
-                        <circle cx="150" cy={110 - (midScore / 100) * 100} r="5" fill="#4f46e5" stroke="#fff" strokeWidth="1.5" />
-                        <text x="150" y={110 - (midScore / 100) * 100 - 8} fill="#4338ca" fontSize="8" fontWeight="black" textAnchor="middle">{midScore}점</text>
+                        <circle cx="150" cy={80 - midScore * 0.7} r="3" fill="#ffffff" stroke="#b28a50" strokeWidth="2" />
+                        <text x="150" y={80 - midScore * 0.7 - 7} fontSize="7" fill="#b28a50" fontWeight="bold" textAnchor="middle">{midScore}점</text>
+                        <text x="150" y="89" fontSize="6.5" fill="#64748b" textAnchor="middle" fontWeight="bold">중간</text>
                       </g>
                     )}
 
-                    {/* 사후 데이터 포인트 */}
+                    {/* 사후 노드 */}
                     {postScore !== null && (
                       <g>
-                        <circle cx="250" cy={110 - (postScore / 100) * 100} r="5" fill="#312e81" stroke="#fff" strokeWidth="1.5" />
-                        <text x="250" y={110 - (postScore / 100) * 100 - 8} fill="#1e1b4b" fontSize="8" fontWeight="black" textAnchor="middle">{postScore}점</text>
+                        <circle cx="250" cy={80 - postScore * 0.7} r="3" fill="#ffffff" stroke="#ef4444" strokeWidth="2" />
+                        <text x="250" y={80 - postScore * 0.7 - 7} fontSize="7" fill="#ef4444" fontWeight="bold" textAnchor="middle">{postScore}점</text>
+                        <text x="250" y="89" fontSize="6.5" fill="#64748b" textAnchor="middle" fontWeight="bold">사후</text>
                       </g>
                     )}
                   </svg>
                 </div>
+              </div>
 
-                <div className="w-full grid grid-cols-3 gap-2 text-center bg-indigo-50/50 p-2.5 rounded border border-indigo-100">
-                  <div>
-                    <span className="text-[10px] text-gray-500 block">사전 평가 성적</span>
-                    <span className="text-sm font-extrabold text-gray-700">{preScore !== null ? `${preScore}점` : '미응시'}</span>
-                  </div>
-                  <div className="border-x border-indigo-100">
-                    <span className="text-[10px] text-gray-500 block">중간 평가 성적</span>
-                    <span className="text-sm font-extrabold text-gray-700">{midScore !== null ? `${midScore}점` : '미응시'}</span>
-                  </div>
-                  <div>
-                    <span className="text-[10px] text-indigo-500 block">사후 평가 성적</span>
-                    <span className="text-sm font-extrabold text-indigo-900">{postScore !== null ? `${postScore}점` : '미응시'}</span>
-                  </div>
-                </div>
+              {/* 학습 성과 핵심 지표 분석 */}
+              <div style={{ marginTop: "0.8rem", padding: "0.6rem 0.8rem", borderRadius: "5px", backgroundColor: "#fafbfc", border: "1px solid #e2e8f0", borderLeft: "4px solid #b28a50" }}>
+                <div style={{ fontSize: "0.75rem", fontWeight: "bold", color: "#1e3a8a", marginBottom: "0.15rem" }}>학습 성과 핵심 지표 분석</div>
+                <p style={{ fontSize: "0.7rem", color: "#4b5563", lineHeight: 1.4, margin: 0, textIndent: "0.2rem" }}>
+                  {selectedStudent} 학생은 사전 평가 대비 최종 사후 평가에서 총 <strong>{growth}점의 성과 향상</strong>을 달성해 냈습니다. 체계적인 훈련과 반복적인 피드백 구조를 통하여, 오개념 영역의 복원이 가시적으로 수행되었음이 성취 지표 데이터를 통하여 객관적으로 입증됩니다.
+                </p>
               </div>
             </div>
 
-            {/* ② 회차별 문항 성적 대조표 */}
-            <div className="mb-4">
-              <h3 className="text-sm font-bold text-gray-900 mb-3 flex items-center">
-                <span className="w-1.5 h-3.5 bg-indigo-900 rounded-sm mr-2 inline-block"></span>
-                ② 회차별 문항 성적 대조표
-              </h3>
-              <div className="overflow-x-auto border border-gray-200 rounded-lg">
-                <table className="min-w-full divide-y divide-gray-200 text-xs">
-                  <thead className="bg-indigo-900 text-white text-center">
-                    <tr>
-                      <th className="py-2 px-1 font-bold border-r border-indigo-800">평가 구분</th>
-                      {Array.from({ length: 15 }, (_, i) => (
-                        <th key={i} className="py-2 px-0.5 border-r border-indigo-800 font-bold">{i + 1}번</th>
-                      ))}
-                      <th className="py-2 px-1 font-bold">득점 / 총점</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-gray-200 text-center font-medium">
-                    {/* 사전 평가 행 */}
-                    <tr className="bg-white">
-                      <td className="py-2 font-bold text-gray-700 border-r border-gray-200">사전 (1회차)</td>
-                      {Array.from({ length: 15 }, (_, i) => {
-                        const ans = preEval?.answers?.[`q${i + 1}`] ?? preEval?.answers?.[i + 1];
-                        const isO = ans === 'O' || ans === '정답' || ans === true;
-                        return (
-                          <td key={i} className={`py-2 border-r border-gray-100 font-extrabold ${isO ? 'text-blue-600' : 'text-red-500'}`}>
-                            {ans !== undefined ? (isO ? 'O' : 'X') : '-'}
-                          </td>
-                        );
-                      })}
-                      <td className="py-2 font-bold text-gray-800">
-                        {preEval ? `${Object.values(preEval.answers).filter(v => v === 'O' || v === '정답' || v === true).length} / ${Object.keys(preEval.answers).length}` : '-'}
-                      </td>
-                    </tr>
-                    {/* 중간 평가 행 */}
-                    <tr className="bg-gray-50/50">
-                      <td className="py-2 font-bold text-gray-700 border-r border-gray-200">중간 (2회차)</td>
-                      {Array.from({ length: 15 }, (_, i) => {
-                        const ans = midEval?.answers?.[`q${i + 1}`] ?? midEval?.answers?.[i + 1];
-                        const isO = ans === 'O' || ans === '정답' || ans === true;
-                        return (
-                          <td key={i} className={`py-2 border-r border-gray-100 font-extrabold ${isO ? 'text-blue-600' : 'text-red-500'}`}>
-                            {ans !== undefined ? (isO ? 'O' : 'X') : '-'}
-                          </td>
-                        );
-                      })}
-                      <td className="py-2 font-bold text-gray-800">
-                        {midEval ? `${Object.values(midEval.answers).filter(v => v === 'O' || v === '정답' || v === true).length} / ${Object.keys(midEval.answers).length}` : '-'}
-                      </td>
-                    </tr>
-                    {/* 사후 평가 행 */}
-                    <tr className="bg-white">
-                      <td className="py-2 font-bold text-indigo-900 border-r border-gray-200">사후 (3회차)</td>
-                      {Array.from({ length: 15 }, (_, i) => {
-                        const ans = postEval?.answers?.[`q${i + 1}`] ?? postEval?.answers?.[i + 1];
-                        const isO = ans === 'O' || ans === '정답' || ans === true;
-                        return (
-                          <td key={i} className={`py-2 border-r border-gray-100 font-extrabold ${isO ? 'text-blue-600' : 'text-red-500'}`}>
-                            {ans !== undefined ? (isO ? 'O' : 'X') : '-'}
-                          </td>
-                        );
-                      })}
-                      <td className="py-2 font-black text-indigo-900">
-                        {postEval ? `${Object.values(postEval.answers).filter(v => v === 'O' || v === '정답' || v === true).length} / ${Object.keys(postEval.answers).length}` : '-'}
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
+            {/* 2. 회차별 문항 성적 대조표 */}
+            <div className="report-section" style={{ marginBottom: "0" }}>
+              <div className="section-title-container" style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.6rem" }}>
+                <span style={{ backgroundColor: "#1e3a8a", color: "#fff", width: "1.1rem", height: "1.1rem", borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.7rem" }}>2</span>
+                <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#1e3a8a" }}>회차별 문항 성적 대조표</span>
               </div>
-            </div>
-
-            {/* 페이지 1 하단 푸터 표식 */}
-            <div className="absolute bottom-6 left-15 right-15 flex justify-between items-center text-[10px] text-gray-400 border-t border-gray-100 pt-2" style={{ left: '15mm', right: '15mm' }}>
-              <span>SGS Learnway Academy Analysis System</span>
-              <span className="font-bold">PAGE 1 / 2</span>
-            </div>
-
-          </div>
-
-          {/* ----------------------------------------------------
-              PAGE 2: AI 성과 정밀 분석 및 멘토 추천 처방 (LARS 6.pdf 형식)
-              ---------------------------------------------------- */}
-          <div className="a4-page bg-white shadow-lg border border-gray-200" style={{ width: '210mm', height: '296mm', padding: '20mm 15mm', boxSizing: 'border-box', position: 'relative' }}>
-            
-            {/* 상단 미니 헤더 */}
-            <div className="flex justify-between items-center border-b border-indigo-900 pb-2 mb-4">
-              <span className="text-xs font-black text-indigo-900">LEARNWAY LARS 종합 분석</span>
-              <span className="text-[10px] text-gray-400">발행 대상: {studentName} 학생</span>
-            </div>
-
-            <div className="mb-4">
-              <h2 className="text-base font-black text-indigo-950 flex items-center">
-                <span className="w-2 h-4 bg-indigo-900 rounded-sm mr-2"></span>
-                ③ 시계열 누적 성과 종합 피드백
-              </h2>
-              <p className="text-[11px] text-gray-500 mt-0.5">3회차 누적 진단 빅데이터와 인공지능이 분석한 성과 분석 및 추천 지도 로드맵입니다.</p>
-            </div>
-
-            {/* 정성 분석 카드 영역 (1단 세로 수직 배열 통합) */}
-            <div className="space-y-4">
               
-              {/* Card 1: 💡 멘토 종합 지도 소견 */}
-              <div className="bg-gradient-to-r from-indigo-50/70 to-blue-50/30 p-4 rounded-lg border border-indigo-100/80">
-                <h4 className="text-xs font-bold text-indigo-950 mb-2 flex items-center">
-                  <span className="mr-1.5 text-sm">💡</span> 멘토 종합 지도 소견
-                </h4>
-                <p className="text-[11px] text-gray-700 leading-relaxed text-justify whitespace-pre-line" style={{ maxHeight: '110px', overflowY: 'hidden' }}>
-                  {aiResult?.overallAnalysis || "학습 성과를 분석하고 있습니다. AI 정밀 분석 버튼을 눌러 결과보고서를 자동 생성하세요."}
-                </p>
-              </div>
-
-              {/* Card 2: 🎯 학습성장 핵심 오개념 교정 역사 */}
-              <div className="bg-gradient-to-r from-emerald-50/70 to-teal-50/30 p-4 rounded-lg border border-emerald-100/80">
-                <h4 className="text-xs font-bold text-emerald-950 mb-2 flex items-center">
-                  <span className="mr-1.5 text-sm">🎯</span> 학습성장 핵심 오개념 교정 역사
-                </h4>
-                <p className="text-[11px] text-gray-700 leading-relaxed text-justify whitespace-pre-line" style={{ maxHeight: '110px', overflowY: 'hidden' }}>
-                  {aiResult?.conceptAnalysis || "성장 과정의 핵심 개념 진단 이력을 대입 중입니다."}
-                </p>
-              </div>
-
-              {/* Card 3: ✏ 추천 지도 노하우 및 가정 연계 지도법 */}
-              <div className="bg-gradient-to-r from-amber-50/70 to-orange-50/30 p-4 rounded-lg border border-amber-100/80">
-                <h4 className="text-xs font-bold text-amber-950 mb-2 flex items-center">
-                  <span className="mr-1.5 text-sm">✏</span> 추천 지도 노하우 및 가정 연계 지도법
-                </h4>
-                <p className="text-[11px] text-gray-700 leading-relaxed text-justify whitespace-pre-line" style={{ maxHeight: '110px', overflowY: 'hidden' }}>
-                  {aiResult?.coachingPrescription || "개선 맞춤 처방 및 학부모 가이드를 연동 중입니다."}
-                </p>
-              </div>
-
-              {/* Card 4: 📋 실천 액션 플랜 */}
-              <div className="bg-gradient-to-r from-purple-50/70 to-fuchsia-50/30 p-4 rounded-lg border border-purple-100/80">
-                <h4 className="text-xs font-bold text-purple-950 mb-2 flex items-center">
-                  <span className="mr-1.5 text-sm">📋</span> 실천 액션 플랜
-                </h4>
-                <p className="text-[11px] text-gray-700 leading-relaxed text-justify whitespace-pre-line" style={{ maxHeight: '110px', overflowY: 'hidden' }}>
-                  {aiResult?.actionPlan || "행동 교정 실천 플랜을 수립하고 있습니다."}
-                </p>
-              </div>
-
+              <table className="report-table" style={{ fontSize: "0.68rem", width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ backgroundColor: "#1e3a8a", color: "#ffffff" }}>
+                    <th style={{ width: "18%", padding: "0.45rem", border: "1px solid #cbd5e1", textAlign: "center" }}>평가 회차</th>
+                    <th style={{ width: "14%", padding: "0.45rem", border: "1px solid #cbd5e1", textAlign: "center" }}>환산 점수</th>
+                    <th style={{ width: "16%", padding: "0.45rem", border: "1px solid #cbd5e1", textAlign: "center" }}>취득 수준</th>
+                    <th style={{ width: "16%", padding: "0.45rem", border: "1px solid #cbd5e1", textAlign: "center" }}>맞은 문항 수</th>
+                    <th style={{ padding: "0.45rem", border: "1px solid #cbd5e1", textIndent: "0.3rem" }}>오답 발생 문항 번호</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {studentEvals.map((e, idx) => {
+                    const s = calculateReportStats(e.grade, e.subject, e.answers);
+                    const wrongNums = s.detailedResults.filter(q => !q.isCorrect).map(q => q.q_idx);
+                    return (
+                      <tr key={idx} style={{ backgroundColor: idx % 2 === 1 ? "#f8fafc" : "#ffffff" }}>
+                        <td style={{ fontWeight: "bold", padding: "0.45rem", border: "1px solid #cbd5e1", textAlign: "center" }}>{e.examType} 평가</td>
+                        <td style={{ fontWeight: "bold", padding: "0.45rem", border: "1px solid #cbd5e1", textAlign: "center", color: "#1e3a8a" }}>{s.score}점</td>
+                        <td style={{ padding: "0.45rem", border: "1px solid #cbd5e1", textAlign: "center" }}>
+                          <span style={{ padding: "0.15rem 0.35rem", borderRadius: "3px", fontSize: "0.6rem", fontWeight: "bold", backgroundColor: s.achievementLevel === "도달" ? "#d1fae5" : "#fee2e2", color: s.achievementLevel === "도달" ? "#065f46" : "#991b1b" }}>
+                            {s.achievementLevel}
+                          </span>
+                        </td>
+                        <td style={{ padding: "0.45rem", border: "1px solid #cbd5e1", textAlign: "center", fontWeight: "600" }}>{s.correctCount} / {s.totalCount}</td>
+                        <td style={{ color: "#ef4444", fontWeight: "500", padding: "0.45rem", border: "1px solid #cbd5e1", paddingLeft: "0.6rem" }}>
+                          {wrongNums.length > 0 ? `${wrongNums.join(", ")}번 문항` : "오답 없음 (완전 학습)"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
-
-            {/* 하단 서명 및 기관 표기 영역 */}
-            <div className="mt-8 pt-4 border-t border-gray-100 flex justify-between items-center">
-              <div>
-                <p className="text-[10px] text-gray-400">Student Achievement Diagnosis System</p>
-                <p className="text-xs font-bold text-indigo-950 mt-1">SGS 스카이 교육사업부 & Learnway 연구소 개발팀</p>
-              </div>
-              <div className="text-right flex items-center gap-2">
-                <div className="text-right">
-                  <span className="text-[9px] text-gray-400 block">진단 책임 지도 멘토</span>
-                  <span className="text-xs font-black text-gray-800">{latestEval?.mentorName || '대표 멘토'} (인)</span>
-                </div>
-                <div className="w-10 h-10 border border-indigo-200 rounded-full flex items-center justify-center bg-indigo-50 font-bold text-[10px] text-indigo-900">
-                  직인
-                </div>
-              </div>
-            </div>
-
-            {/* 페이지 2 하단 푸터 표식 */}
-            <div className="absolute bottom-6 left-15 right-15 flex justify-between items-center text-[10px] text-gray-400 border-t border-gray-100 pt-2" style={{ left: '15mm', right: '15mm' }}>
-              <span>SGS Learnway Academy Analysis System</span>
-              <span className="font-bold">PAGE 2 / 2</span>
-            </div>
-
           </div>
 
+          {/* 하단 푸터 표식 */}
+          <div className="report-footer" style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid #e2e8f0", paddingTop: "0.4rem", fontSize: "0.65rem", color: "#94a3b8" }}>
+            <span>ⓒ Learnway School & SGS입시전략연구소</span>
+            <span>Page 1 of 2</span>
+          </div>
+        </div>
+
+        {/* 인쇄 분할선 */}
+        <div className="page-divider" style={{ textAlign: "center", color: "#94a3b8", fontSize: "0.7rem", margin: "1.5rem 0", borderTop: "2px dashed #cbd5e1", padding: "0.4rem 0" }}>
+          페이지 경계 (인쇄 시 이 선을 기준으로 분할 인쇄됩니다)
+        </div>
+
+        {/* ----------------- PAGE 2: Claude 정성 분석 & 맞춤 처방 페이지 (LARS 6.pdf Page 2 완벽 미러링) ----------------- */}
+        <div className="report-a4-page" style={{ 
+          width: "210mm",
+          height: "296mm", 
+          boxSizing: "border-box", 
+          backgroundColor: "#ffffff", 
+          boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)",
+          padding: "18mm 18mm", 
+          margin: "0 auto",
+          display: "flex",
+          flexDirection: "column",
+          justifyContent: "space-between"
+        }}>
+          <div>
+            <div className="report-header" style={{ borderBottom: "2px solid #1e3a8a", paddingBottom: "0.3rem", marginBottom: "0.8rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+                <span style={{ fontSize: "0.65rem", color: "#64748b", fontWeight: "bold" }}>LEARNWAY SCHOOL MENTORING OUTCOME REPORT</span>
+                <span style={{ fontSize: "0.75rem", fontWeight: "bold", color: "#1e3a8a" }}>학생명: {selectedStudent} | 최종 종합 소견보고</span>
+              </div>
+            </div>
+
+            <div className="report-section" style={{ display: "flex", flexDirection: "column" }}>
+              <div className="section-title-container" style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.8rem" }}>
+                <span style={{ backgroundColor: "#b28a50", color: "#fff", width: "1.1rem", height: "1.1rem", borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.7rem" }}>3</span>
+                <span style={{ fontSize: "0.85rem", fontWeight: "bold", color: "#1e3a8a" }}>SGS Learnway 최종 종합 분석 및 멘토 피드백</span>
+              </div>
+              
+              {/* 정성 지도 소견 카드군 (1단 풀사이즈 배열) */}
+              <div className="coaching-box-container" style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
+                
+                {/* 1. 멘토 종합 지도 소견 */}
+                <div className="coaching-card" style={{ borderLeft: "4px solid #b28a50", backgroundColor: "#ffffff", border: "1px solid #e2e8f0", borderLeftWidth: "4px", padding: "0.7rem 0.8rem", borderRadius: "5px" }}>
+                  <div style={{ color: "#b28a50", fontWeight: "bold", fontSize: "0.75rem", marginBottom: "0.25rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                    💡 멘토 종합 지도 소견 및 관찰 변화 (장문 분석)
+                  </div>
+                  <div style={{ 
+                    fontSize: "0.68rem", 
+                    color: "#334155", 
+                    lineHeight: 1.45, 
+                    wordBreak: "keep-all",
+                    whiteSpace: "pre-wrap",
+                    textAlign: "justify"
+                  }}>
+                    {isGeneratingAI ? (
+                      <div style={{ color: "#b28a50", fontWeight: "bold" }} className="animate-pulse">
+                        Claude Sonnet 4.6이 회차별 데이터를 정합 대입하여 성과 분석 결과지를 작성하고 있습니다... (약 10초 내외 소요)
+                      </div>
+                    ) : hasValidOutcomeAI ? (
+                      aiReportData.overallAnalysis
+                    ) : (
+                      `${selectedStudent} 학생의 사전/중간/사후 변화를 분석 중입니다. 우측 상단의 [AI 성과 정밀 분석] 버튼을 활성화하여 완결형 소견서를 발급받으실 수 있습니다.`
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. 학습성장 핵심 오개념 교정 역사 */}
+                <div className="coaching-card" style={{ borderLeft: "4px solid #10b981", backgroundColor: "#ffffff", border: "1px solid #e2e8f0", borderLeftWidth: "4px", padding: "0.7rem 0.8rem", borderRadius: "5px" }}>
+                  <div style={{ color: "#10b981", fontWeight: "bold", fontSize: "0.75rem", marginBottom: "0.25rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                    🎯 학습성장 핵심 오개념 교정 역사
+                  </div>
+                  <div style={{ 
+                    fontSize: "0.68rem", 
+                    color: "#334155", 
+                    lineHeight: 1.45, 
+                    wordBreak: "keep-all",
+                    whiteSpace: "pre-wrap",
+                    textAlign: "justify"
+                  }}>
+                    {isGeneratingAI ? (
+                      <div style={{ color: "#10b981", fontWeight: "bold" }} className="animate-pulse">
+                        누적 문항별 변별력을 계산해 개념 소멸 과정을 추적하는 중입니다...
+                      </div>
+                    ) : hasValidOutcomeAI ? (
+                      aiReportData.conceptAnalysis
+                    ) : (
+                      "성과 교정 이력 데이터가 로드되지 않았습니다."
+                    )}
+                  </div>
+                </div>
+
+                {/* 3. 추천 지도 노하우 및 가정 연계 지도법 */}
+                <div className="coaching-card" style={{ borderLeft: "4px solid #3b82f6", backgroundColor: "#ffffff", border: "1px solid #e2e8f0", borderLeftWidth: "4px", padding: "0.7rem 0.8rem", borderRadius: "5px" }}>
+                  <div style={{ color: "#3b82f6", fontWeight: "bold", fontSize: "0.75rem", marginBottom: "0.25rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                    ✏ 추천 지도 노하우 및 가정 연계 지도법
+                  </div>
+                  <div style={{ 
+                    fontSize: "0.68rem", 
+                    color: "#334155", 
+                    lineHeight: 1.45, 
+                    wordBreak: "keep-all",
+                    whiteSpace: "pre-wrap",
+                    textAlign: "justify"
+                  }}>
+                    {isGeneratingAI ? (
+                      <div style={{ color: "#3b82f6", fontWeight: "bold" }} className="animate-pulse">
+                        교수 학습 원리 및 메타인지 연계 노하우를 로드 중입니다...
+                      </div>
+                    ) : hasValidOutcomeAI ? (
+                      aiReportData.coachingPrescription
+                    ) : (
+                      "가정 학습 연동 코칭 분석 데이터가 비어 있습니다."
+                    )}
+                  </div>
+                </div>
+
+                {/* 4. 차기 실천 액션 플랜 */}
+                <div className="coaching-card" style={{ borderLeft: "4px solid #ef4444", backgroundColor: "#ffffff", border: "1px solid #e2e8f0", borderLeftWidth: "4px", padding: "0.7rem 0.8rem", borderRadius: "5px" }}>
+                  <div style={{ color: "#ef4444", fontWeight: "bold", fontSize: "0.75rem", marginBottom: "0.25rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                    🔥 차기 학기 상급 연계를 위한 핵심 실천 액션 플랜
+                  </div>
+                  <div style={{ 
+                    fontSize: "0.68rem", 
+                    color: "#334155", 
+                    lineHeight: 1.45, 
+                    wordBreak: "keep-all",
+                    whiteSpace: "pre-wrap"
+                  }}>
+                    {isGeneratingAI ? (
+                      <div style={{ color: "#ef4444", fontWeight: "bold" }} className="animate-pulse">
+                        지속 가능 오개념 자가 피드백 모델을 구성하고 있습니다...
+                      </div>
+                    ) : hasValidOutcomeAI ? (
+                      aiReportData.actionPlan
+                    ) : (
+                      "지속적 자가 성장을 돕기 위한 액션 플랜 영역입니다."
+                    )}
+                  </div>
+                </div>
+
+              </div>
+            </div>
+          </div>
+
+          {/* 최종 종결 서명 영역 */}
+          <div className="report-footer" style={{ borderTop: "1px solid #e2e8f0", paddingTop: "0.4rem", fontSize: "0.65rem", color: "#94a3b8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+            <span>ⓒ Learnway School & SGS입시전략연구소</span>
+            <span style={{ fontWeight: "bold", color: "#475569" }}>최종 종결 성과보고서 | Page 2 of 2</span>
+          </div>
         </div>
       </div>
     );
   }
 
-  // ==========================================
-  // 4. DEFAULT COMPONENT: LIST VIEW (대시보드 목록)
-  // ==========================================
+  // ==============================================================
+  // 4. 기본 대시보드 리스트 마크업 뷰 (기존 디자인 및 원형 유지)
+  // ==============================================================
   return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h2 className="text-xl font-extrabold text-gray-900">SGS Learnway 평가 관리 및 AI 성과보고서 대시보드</h2>
-          <p className="text-xs text-gray-500 mt-1">학생별로 회차 누적 평가 성적 추이를 모니터링하고 최종 학습성과 진단 종합 리포트를 발행할 수 있습니다.</p>
+    <div className="dashboard-grid">
+      <div className="card">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
+          <h2 style={{ fontSize: "1.3rem", color: "var(--accent-gold)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <FileText size={20} /> 학습 진단 평가 리스트
+          </h2>
+          <button className="btn btn-primary" onClick={onAddNew}>
+            <Plus size={16} /> 신규 평가 등록
+          </button>
         </div>
-        <button
-          onClick={onAddNew}
-          className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded text-sm font-semibold transition"
-        >
-          ➕ 새 진단 평가 등록
-        </button>
+
+        {evaluations.length === 0 ? (
+          <div style={{ textAlign: "center", padding: "3rem", color: "var(--text-muted)", border: "1px dashed var(--border-color)", borderRadius: "8px" }}>
+            등록된 학습 진단 평가가 없습니다. <br />
+            오른쪽 상단의 [신규 평가 등록] 버튼을 눌러 첫 채점 데이터 입력을 시작하십시오!
+          </div>
+        ) : (
+          <div className="table-wrapper">
+            <table>
+              <thead>
+                <tr>
+                  <th style={{ whiteSpace: "nowrap" }}>학생 이름</th>
+                  <th style={{ whiteSpace: "nowrap" }}>과목</th>
+                  <th style={{ whiteSpace: "nowrap" }}>학년</th>
+                  <th>
+                    <div style={{ whiteSpace: "nowrap" }}>평가</div>
+                    <div style={{ whiteSpace: "nowrap" }}>회차</div>
+                  </th>
+                  <th>
+                    <div style={{ whiteSpace: "nowrap" }}>평가</div>
+                    <div style={{ whiteSpace: "nowrap" }}>점수</div>
+                  </th>
+                  <th>
+                    <div style={{ whiteSpace: "nowrap" }}>AI</div>
+                    <div style={{ whiteSpace: "nowrap" }}>분석</div>
+                  </th>
+                  <th style={{ whiteSpace: "nowrap" }}>평가 일자</th>
+                  <th style={{ textAlign: "right", whiteSpace: "nowrap" }}>작업</th>
+                </tr>
+              </thead>
+              <tbody>
+                {evaluations.map((item) => {
+                  const stats = calculateReportStats(item.grade, item.subject, item.answers);
+                  const hasAI = !!(item.aiResult && item.aiResult.overallAnalysis && item.aiResult.overallAnalysis.trim());
+                  return (
+                    <tr key={item.id}>
+                      <td style={{ fontWeight: 600, color: "white", whiteSpace: "nowrap" }}>{item.studentName}</td>
+                      <td>{getSubjectLabel(item.subject)}</td>
+                      <td>
+                        <div style={{ whiteSpace: "nowrap" }}>중학교</div>
+                        <div style={{ whiteSpace: "nowrap" }}>
+                          {item.grade === "middle_1" ? "1학년" : item.grade === "middle_2" ? "2학년" : "3학년"}
+                        </div>
+                      </td>
+                      <td>
+                        <span className={`badge ${
+                          item.examType === "사전" ? "badge-diff-하" : item.examType === "중간" ? "badge-diff-중" : "badge-diff-상"
+                        }`} style={{ display: "inline-block", textAlign: "center" }}>
+                          <div style={{ whiteSpace: "nowrap" }}>{item.examType}</div>
+                          <div style={{ whiteSpace: "nowrap" }}>평가</div>
+                        </span>
+                      </td>
+                      <td style={{ fontWeight: 700, color: "var(--accent-gold)", fontSize: "1.05rem" }}>{stats.score}점</td>
+                      <td>
+                        {hasAI ? (
+                          <span className="badge" style={{ backgroundColor: "rgba(46, 204, 113, 0.15)", color: "#2ecc71", border: "1px solid rgba(46, 204, 113, 0.3)", display: "inline-block", textAlign: "center" }}>
+                            <div style={{ whiteSpace: "nowrap" }}>분석</div>
+                            <div style={{ whiteSpace: "nowrap" }}>완료</div>
+                          </span>
+                        ) : (
+                          <span className="badge" style={{ backgroundColor: "rgba(231, 76, 60, 0.15)", color: "#e74c3c", border: "1px solid rgba(231, 76, 60, 0.3)", display: "inline-block", textAlign: "center" }}>
+                            <div style={{ whiteSpace: "nowrap" }}>미생성</div>
+                          </span>
+                        )}
+                      </td>
+                      <td style={{ fontSize: "0.85rem", color: "var(--text-muted)" }}>{item.date}</td>
+                      <td style={{ textAlign: "right" }}>
+                        <div style={{ display: "inline-flex", gap: "0.4rem" }}>
+                          <button
+                            className="btn btn-secondary"
+                            style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem" }}
+                            title="리포트 조회"
+                            onClick={() => onView(item.id)}
+                          >
+                            <Eye size={12} />
+                          </button>
+                          <button
+                            className="btn btn-secondary"
+                            style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem" }}
+                            title="수정"
+                            onClick={() => onEdit(item.id)}
+                          >
+                            <Edit2 size={12} />
+                          </button>
+                          <button
+                            className="btn btn-danger"
+                            style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem" }}
+                            title="삭제"
+                            onClick={() => onDelete(item.id)}
+                          >
+                            <Trash2 size={12} />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
-      <div className="bg-white shadow rounded-lg overflow-hidden border border-gray-200">
-        <table className="min-w-full divide-y divide-gray-200 text-sm">
-          <thead className="bg-gray-50">
-            <tr>
-              <th className="px-6 py-3 text-left font-bold text-gray-700">대상 학생 정보</th>
-              <th className="px-6 py-3 text-left font-bold text-gray-700">진단 과목</th>
-              <th className="px-6 py-3 text-left font-bold text-gray-700">누적 회차수</th>
-              <th className="px-6 py-3 text-left font-bold text-gray-700">성장도 점수 변화</th>
-              <th className="px-6 py-3 text-center font-bold text-gray-700">최종 종합 분석</th>
-              <th className="px-6 py-3 text-center font-bold text-gray-700">관리 / 상세 행동</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-200 bg-white">
-            {Object.keys(groupedEvaluations).length === 0 ? (
-              <tr>
-                <td colSpan={6} className="px-6 py-10 text-center text-gray-400">
-                  등록된 평가 내역이 없습니다. 새 진단 평가를 먼저 등록해 주세요.
-                </td>
-              </tr>
-            ) : (
-              Object.entries(groupedEvaluations).map(([key, list]) => {
-                const firstItem = list[0];
-                const { preScore, midScore, postScore, growth } = calculateReportStats(list);
-                
-                // 최신 데이터 기준 정렬
-                const sorted = [...list].sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
-                const latestEval = sorted[0];
-                const hasValidOutcomeAI = latestEval?.aiResult?.isOutcomeReport && latestEval?.aiResult?.overallAnalysis;
+      <div className="card">
+        <h2 style={{ fontSize: "1.3rem", color: "var(--accent-gold)", marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <TrendingUp size={20} /> 사전·중간·사후 변화 리포트
+        </h2>
+        <p style={{ fontSize: "0.85rem", color: "var(--text-muted)", marginBottom: "1.5rem" }}>
+          학생을 선택하여 회차별 학습 성장도와 종합 피드백을 한눈에 조회하고 최종 성과보고서를 발행하세요.
+        </p>
 
+        <div className="form-group" style={{ marginBottom: "1.5rem" }}>
+          <label>분석할 학생 선택</label>
+          <select value={selectedStudent} onChange={(e) => setSelectedStudent(e.target.value)}>
+            <option value="">-- 학생 선택 --</option>
+            {students.map((name, idx) => (
+              <option key={idx} value={name}>{name}</option>
+            ))}
+          </select>
+        </div>
+
+        {selectedStudent ? (
+          <div>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
+              <h3 style={{ fontSize: "1rem", color: "white" }}>{selectedStudent} 학생 성취 이력 ({studentEvals.length}개)</h3>
+              {studentEvals.length >= 2 && (
+                <button 
+                  className="btn btn-primary" 
+                  style={{ padding: "0.35rem 0.75rem", fontSize: "0.78rem" }} 
+                  onClick={handleLaunchOutcomeReport}
+                  disabled={isGeneratingAI}
+                >
+                  <Award size={13} /> {isGeneratingAI ? "AI 분석 중..." : "성과보고서 발행"}
+                </button>
+              )}
+            </div>
+
+            <div className="trend-card-list">
+              {studentEvals.map((e, idx) => {
+                const s = calculateReportStats(e.grade, e.subject, e.answers);
                 return (
-                  <tr key={key} className="hover:bg-gray-50/50">
-                    <td className="px-6 py-4">
-                      <div className="font-bold text-gray-900">{firstItem.studentName}</div>
-                      <div className="text-xs text-gray-500">{getGradeLabel(firstItem.grade)}</div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <span className="bg-indigo-50 text-indigo-800 text-xs font-bold px-2.5 py-1 rounded">
-                        {getSubjectLabel(firstItem.subject)}
-                      </span>
-                    </td>
-                    <td className="px-6 py-4 font-semibold text-gray-700">
-                      총 {list.length}회차 등록됨
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="text-xs text-gray-600">
-                        {preScore !== null ? `${preScore}점` : '-'} → {midScore !== null ? `${midScore}점` : '-'} → {postScore !== null ? `${postScore}점` : '-'}
-                      </div>
-                      <div className="text-xs font-black text-indigo-600 mt-0.5">
-                        성장도: +{growth} %p
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <button
-                        onClick={() => handleLaunchOutcomeReport(firstItem.studentName, firstItem.grade, firstItem.subject)}
-                        disabled={isGeneratingAI}
-                        className={`px-3 py-1.5 rounded text-xs font-bold transition ${
-                          hasValidOutcomeAI 
-                          ? 'bg-emerald-100 hover:bg-emerald-200 text-emerald-800' 
-                          : 'bg-indigo-600 hover:bg-indigo-700 text-white'
-                        }`}
-                      >
-                        {hasValidOutcomeAI ? '✅ 종합 리포트 보기' : (isGeneratingAI ? '⚡ 분석 생성중...' : '📈 AI 성과 정밀분석')}
-                      </button>
-                    </td>
-                    <td className="px-6 py-4 text-center">
-                      <div className="flex justify-center gap-1.5">
-                        <button
-                          onClick={() => onView(latestEval.id)}
-                          className="px-2.5 py-1 text-xs border border-gray-300 text-gray-700 rounded hover:bg-gray-100"
-                        >
-                          조회
-                        </button>
-                        <button
-                          onClick={() => onEdit(latestEval.id)}
-                          className="px-2.5 py-1 text-xs border border-blue-300 text-blue-700 rounded hover:bg-blue-50"
-                        >
-                          수정
-                        </button>
-                        <button
-                          onClick={() => onDelete(latestEval.id)}
-                          className="px-2.5 py-1 text-xs border border-red-300 text-red-700 rounded hover:bg-red-50"
-                        >
-                          삭제
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
+                  <div key={idx} className="trend-card-item">
+                    <div className="trend-item-left">
+                      <span style={{ fontSize: "0.8rem", color: "var(--accent-gold)", fontWeight: 600 }}>{e.examType} 평가</span>
+                      <span style={{ fontSize: "0.75rem", color: "var(--text-muted)" }}>{e.date} | {getSubjectLabel(e.subject)}</span>
+                    </div>
+                    <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                      <span className="badge badge-chapter" style={{ fontSize: "0.7rem" }}>{s.achievementLevel}</span>
+                      <span className="trend-item-score">{s.score}점</span>
+                    </div>
+                  </div>
                 );
-              })
+              })}
+            </div>
+
+            {studentEvals.length >= 2 ? (
+              <div style={{ marginTop: "1.5rem", padding: "1rem", borderRadius: "8px", backgroundColor: "rgba(197, 168, 128, 0.1)", border: "1px solid rgba(197, 168, 128, 0.2)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", color: "var(--accent-gold)", fontWeight: 700, fontSize: "0.95rem", marginBottom: "0.3rem" }}>
+                  <TrendingUp size={16} /> 멘토링 학습성장 실적
+                </div>
+                <div style={{ fontSize: "0.85rem", color: "var(--text-light)" }}>
+                  사전 성적 <strong>{preScore}점</strong>에서 사후/중간 성적 <strong>{postScore !== null ? postScore : midScore}점</strong>으로 <br />
+                  총 <strong style={{ color: "var(--success-color)", fontSize: "1.1rem" }}>+{growth}%p</strong> 성장하였습니다!
+                </div>
+              </div>
+            ) : (
+              <div style={{ marginTop: "1.5rem", fontSize: "0.8rem", color: "var(--text-muted)", textAlign: "center", padding: "1rem", border: "1px dashed rgba(255,255,255,0.05)", borderRadius: "8px" }}>
+                성과보고서를 발행하려면 최소 2개 회차(예: 사전 및 사후) 이상의 평가 정보가 등록되어야 합니다.
+              </div>
             )}
-          </tbody>
-        </table>
+          </div>
+        ) : (
+          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "3rem 1rem", border: "1px dashed rgba(255, 255, 255, 0.05)", borderRadius: "8px", color: "var(--text-muted)", textAlign: "center", fontSize: "0.85rem" }}>
+            학생을 선택하시면 회차별 점수 변화 그래프와 성장도를 추적할 수 있습니다.
+          </div>
+        )}
       </div>
     </div>
   );
