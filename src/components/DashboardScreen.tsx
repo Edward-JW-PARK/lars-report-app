@@ -114,6 +114,14 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   };
 
   if (showFinalReport && selectedStudent) {
+    const scores = [
+      { label: "사전", score: preScore || 0 },
+      { label: "중간", score: midScore || 0 },
+      { label: "사후", score: postScore || 0 }
+    ];
+
+    const hasMid = midScore !== null;
+
     return (
       <div className="report-workspace-container" style={{ minHeight: "auto", overflow: "visible", backgroundColor: "#f1f5f9", padding: "2rem 0" }}>
         {/* 우측 상단 플로팅 액션 바 */}
@@ -138,7 +146,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           </button>
         </div>
 
-        {/* ----------------- PAGE 1 ----------------- */}
+        {/* ----------------- PAGE 1 (LARS 6.pdf 기준 정량 페이지 완벽 대응) ----------------- */}
         <div className="report-a4-page" style={{ 
           pageBreakAfter: "always", 
           breakAfter: "page", 
@@ -159,7 +167,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                 LEARNWAY SCHOOL MENTORING OUTCOME REPORT
               </div>
               <div className="report-title" style={{ fontSize: "1.7rem", fontWeight: 800, color: "#1e3a8a" }}>
-                {selectedStudent} 학생 멘토링 최종 성과보고서
+                Learnway 멘토링 프로젝트 최종 성과보고서
               </div>
               <div style={{ marginTop: "0.4rem", fontSize: "0.8rem", color: "#4b5563", fontWeight: 500 }}>
                 프로젝트 기간 동안 일어난 학생의 학업 성취 변화 및 종합적인 코칭 성과를 요약 보고합니다.
@@ -171,20 +179,20 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                   <span className="meta-box-value" style={{ fontSize: "0.9rem", fontWeight: "bold", color: "#111827" }}>{selectedStudent}</span>
                 </div>
                 <div className="meta-box" style={{ border: "1px solid #e5e7eb", borderRadius: "6px", padding: "0.4rem 0.6rem", display: "flex", flexDirection: "column", gap: "0.1rem" }}>
-                  <span className="meta-box-label" style={{ fontSize: "0.65rem", color: "#6b7280", fontWeight: "600" }}>학년 / 과목</span>
+                  <span className="meta-box-label" style={{ fontSize: "0.65rem", color: "#6b7280", fontWeight: "600" }}>과목 / 학년</span>
                   <span className="meta-box-value" style={{ fontSize: "0.9rem", fontWeight: "bold", color: "#111827" }}>
-                    {latestEval ? `${getGradeLabel(latestEval.grade)} / ${getSubjectLabel(latestEval.subject)}` : "-"}
+                    {latestEval ? `${getSubjectLabel(latestEval.subject)} / ${getGradeLabel(latestEval.grade)}` : "-"}
                   </span>
                 </div>
                 <div className="meta-box" style={{ border: "1px solid #e5e7eb", borderRadius: "6px", padding: "0.4rem 0.6rem", display: "flex", flexDirection: "column", gap: "0.1rem" }}>
-                  <span className="meta-box-label" style={{ fontSize: "0.65rem", color: "#6b7280", fontWeight: "600" }}>종합 성장 성과</span>
-                  <span className="meta-box-value" style={{ fontSize: "0.9rem", fontWeight: "bold", color: growth >= 0 ? "#ef4444" : "#1e3a8a" }}>
-                    {growth >= 0 ? `+${growth}점 성장` : `${growth}점`}
-                  </span>
+                  <span className="meta-box-label" style={{ fontSize: "0.65rem", color: "#6b7280", fontWeight: "600" }}>총 평가 횟수</span>
+                  <span className="meta-box-value" style={{ fontSize: "0.9rem", fontWeight: "bold", color: "#111827" }}>{studentEvals.length}회 (사전/중간/사후)</span>
                 </div>
                 <div className="meta-box" style={{ border: "1px solid #e5e7eb", borderRadius: "6px", padding: "0.4rem 0.6rem", display: "flex", flexDirection: "column", gap: "0.1rem" }}>
-                  <span className="meta-box-label" style={{ fontSize: "0.65rem", color: "#6b7280", fontWeight: "600" }}>발행기관</span>
-                  <span className="meta-box-value" style={{ fontSize: "0.9rem", fontWeight: "bold", color: "#111827" }}>SGS입시전략연구소</span>
+                  <span className="meta-box-label" style={{ fontSize: "0.65rem", color: "#6b7280", fontWeight: "600" }}>최종 성장도</span>
+                  <span className="meta-box-value" style={{ fontSize: "0.9rem", fontWeight: "bold", color: growth >= 0 ? "#22c55e" : "#ef4444" }}>
+                    {growth >= 0 ? `+${growth}점` : `${growth}점`}
+                  </span>
                 </div>
               </div>
             </div>
@@ -192,147 +200,128 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
             {/* Section 1: 성적 향상 흐름 시각화 */}
             <div className="report-section" style={{ breakInside: "avoid", marginBottom: "1.2rem" }}>
               <div className="section-title-container" style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.65rem" }}>
-                <span className="section-num" style={{ backgroundColor: "#b28a50", color: "#fff", width: "1.3rem", height: "1.3rem", borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.75rem" }}>1</span>
-                <span className="section-title" style={{ fontSize: "0.9rem", fontWeight: "bold", color: "#1e3a8a" }}>사전 · 중간 · 사후 종합 성취도 추이</span>
+                <span className="section-num" style={{ backgroundColor: "#1e3a8a", color: "#fff", width: "1.3rem", height: "1.3rem", borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.75rem" }}>1</span>
+                <span className="section-title" style={{ fontSize: "0.9rem", fontWeight: "bold", color: "#1e3a8a" }}>학업 성취 점수 추이 및 성장 곡선</span>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "55% 45%", gap: "1.2rem" }}>
-                {/* 왼쪽 표 영역 */}
-                <table className="report-table" style={{ fontSize: "0.65rem", width: "100%", borderCollapse: "collapse" }}>
-                  <thead>
-                    <tr style={{ backgroundColor: "#f8fafc", color: "#1e3a8a" }}>
-                      <th style={{ padding: "0.4rem", border: "1px solid #cbd5e1" }}>평가 단계</th>
-                      <th style={{ padding: "0.4rem", border: "1px solid #cbd5e1" }}>평가 일자</th>
-                      <th style={{ padding: "0.4rem", border: "1px solid #cbd5e1" }}>성취 문항 수</th>
-                      <th style={{ padding: "0.4rem", border: "1px solid #cbd5e1" }}>환산 점수</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr>
-                      <td style={{ padding: "0.4rem", border: "1px solid #cbd5e1", textAlign: "center", fontWeight: "bold" }}>사전 평가 (시작)</td>
-                      <td style={{ padding: "0.4rem", border: "1px solid #cbd5e1", textAlign: "center" }}>{preEval?.date || "-"}</td>
-                      <td style={{ padding: "0.4rem", border: "1px solid #cbd5e1", textAlign: "center" }}>
-                        {preEval ? `${calculateReportStats(preEval.grade, preEval.subject, preEval.answers).correctCount} / ${calculateReportStats(preEval.grade, preEval.subject, preEval.answers).totalCount}` : "-"}
-                      </td>
-                      <td style={{ padding: "0.4rem", border: "1px solid #cbd5e1", textAlign: "center", fontWeight: "bold" }}>{preScore !== null ? `${preScore}점` : "-"}</td>
-                    </tr>
-                    <tr>
-                      <td style={{ padding: "0.4rem", border: "1px solid #cbd5e1", textAlign: "center", fontWeight: "bold" }}>중간 평가 (과정)</td>
-                      <td style={{ padding: "0.4rem", border: "1px solid #cbd5e1", textAlign: "center" }}>{midEval?.date || "-"}</td>
-                      <td style={{ padding: "0.4rem", border: "1px solid #cbd5e1", textAlign: "center" }}>
-                        {midEval ? `${calculateReportStats(midEval.grade, midEval.subject, midEval.answers).correctCount} / ${calculateReportStats(midEval.grade, midEval.subject, midEval.answers).totalCount}` : "-"}
-                      </td>
-                      <td style={{ padding: "0.4rem", border: "1px solid #cbd5e1", textAlign: "center", fontWeight: "bold" }}>{midScore !== null ? `${midScore}점` : "-"}</td>
-                    </tr>
-                    <tr>
-                      <td style={{ padding: "0.4rem", border: "1px solid #cbd5e1", textAlign: "center", fontWeight: "bold" }}>사후 평가 (최종)</td>
-                      <td style={{ padding: "0.4rem", border: "1px solid #cbd5e1", textAlign: "center" }}>{postEval?.date || "-"}</td>
-                      <td style={{ padding: "0.4rem", border: "1px solid #cbd5e1", textAlign: "center" }}>
-                        {postEval ? `${calculateReportStats(postEval.grade, postEval.subject, postEval.answers).correctCount} / ${calculateReportStats(postEval.grade, postEval.subject, postEval.answers).totalCount}` : "-"}
-                      </td>
-                      <td style={{ padding: "0.4rem", border: "1px solid #cbd5e1", textAlign: "center", fontWeight: "bold", color: "#ef4444" }}>{postScore !== null ? `${postScore}점` : "-"}</td>
-                    </tr>
-                  </tbody>
-                </table>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.8rem", marginBottom: "0.8rem" }}>
+                <div className="report-panel" style={{ textAlign: "center", padding: "0.6rem", backgroundColor: "#f8fafc", borderRadius: "8px", borderTop: "4px solid #94a3b8" }}>
+                  <span style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 600 }}>사전 평가</span>
+                  <span style={{ display: "block", fontSize: "1.5rem", fontWeight: 800, color: "#475569", margin: "0.1rem 0" }}>{preScore !== null ? `${preScore}점` : "미응시"}</span>
+                  <span style={{ fontSize: "0.6rem", color: "#94a3b8" }}>{preEval?.date || "-"}</span>
+                </div>
+                <div className="report-panel" style={{ textAlign: "center", padding: "0.6rem", backgroundColor: "#f8fafc", borderRadius: "8px", borderTop: "4px solid #b28a50" }}>
+                  <span style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 600 }}>중간 평가</span>
+                  <span style={{ display: "block", fontSize: "1.5rem", fontWeight: 800, color: "#b28a50", margin: "0.1rem 0" }}>{midScore !== null ? `${midScore}점` : "미응시"}</span>
+                  <span style={{ fontSize: "0.6rem", color: "#94a3b8" }}>{midEval?.date || "-"}</span>
+                </div>
+                <div className="report-panel" style={{ textAlign: "center", padding: "0.6rem", backgroundColor: "#f8fafc", borderRadius: "8px", borderTop: "4px solid #1e3a8a" }}>
+                  <span style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 600 }}>사후 평가</span>
+                  <span style={{ display: "block", fontSize: "1.5rem", fontWeight: 800, color: "#1e3a8a", margin: "0.1rem 0" }}>{postScore !== null ? `${postScore}점` : "미응시"}</span>
+                  <span style={{ fontSize: "0.6rem", color: "#94a3b8" }}>{postEval?.date || "-"}</span>
+                </div>
+              </div>
 
-                {/* 오른쪽 그래프 영역 */}
-                <div style={{ backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "6px", padding: "0.6rem", position: "relative", display: "flex", flexDirection: "column", justifyContent: "center" }}>
-                  <div style={{ fontSize: "0.6rem", color: "#94a3b8", fontWeight: 700, marginBottom: "0.2rem", textAlign: "center" }}>성취도 변화 추적 그래프</div>
-                  <svg width="100%" height="70" viewBox="0 0 200 70" style={{ overflow: "visible" }}>
-                    <line x1="20" y1="60" x2="180" y2="60" stroke="#e2e8f0" strokeDasharray="2,2" />
-                    <line x1="20" y1="35" x2="180" y2="35" stroke="#e2e8f0" strokeDasharray="2,2" />
-                    <line x1="20" y1="10" x2="180" y2="10" stroke="#e2e8f0" strokeDasharray="2,2" />
+              <div style={{ backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "1rem", marginBottom: "0.8rem", position: "relative" }}>
+                <div style={{ position: "absolute", top: "6px", left: "10px", fontSize: "0.6rem", color: "#94a3b8", fontWeight: 600 }}>성장 지표 트렌드 (Trend Graph)</div>
+                <svg width="100%" height="110" viewBox="0 0 500 110" style={{ overflow: "visible" }}>
+                  <line x1="40" y1="100" x2="460" y2="100" stroke="#e2e8f0" strokeDasharray="3,3" />
+                  <line x1="40" y1="55" x2="460" y2="55" stroke="#e2e8f0" strokeDasharray="3,3" />
+                  <line x1="40" y1="10" x2="460" y2="10" stroke="#e2e8f0" strokeDasharray="3,3" />
+                  
+                  <text x="15" y="103" fontSize="8" fill="#94a3b8" fontWeight="bold">0</text>
+                  <text x="15" y="58" fontSize="8" fill="#94a3b8" fontWeight="bold">50</text>
+                  <text x="15" y="13" fontSize="8" fill="#94a3b8" fontWeight="bold">100</text>
 
-                    {/* 트렌드 선 */}
-                    {preScore !== null && (
-                      <path
-                        d={
-                          midScore !== null && postScore !== null
-                            ? `M 30 ${60 - preScore * 0.5} L 100 ${60 - midScore * 0.5} L 170 ${60 - postScore * 0.5}`
-                            : `M 30 ${60 - preScore * 0.5} L 170 ${60 - (postScore ?? midScore ?? 0) * 0.5}`
-                        }
-                        fill="none"
-                        stroke="#ef4444"
-                        strokeWidth="1.5"
-                      />
-                    )}
-
-                    {/* 사전 포인트 */}
-                    {preScore !== null && (
-                      <g>
-                        <circle cx="30" cy={60 - preScore * 0.5} r="2.5" fill="#fff" stroke="#1e3a8a" strokeWidth="1.5" />
-                        <text x="30" y={52 - preScore * 0.5} fontSize="5" fill="#333" fontWeight="bold" textAnchor="middle">{preScore}점</text>
-                        <text x="30" y="67" fontSize="5" fill="#64748b" textAnchor="middle">사전</text>
+                  {/* 트렌드 그래프 선 */}
+                  {preScore !== null && (
+                    <path
+                      d={
+                        hasMid && midScore !== null && postScore !== null
+                          ? `M 60 ${110 - preScore} L 250 ${110 - midScore} L 440 ${110 - postScore}`
+                          : `M 60 ${110 - preScore} L 440 ${110 - (postScore ?? midScore ?? 0)}`
+                      }
+                      fill="none"
+                      stroke="#1e3a8a"
+                      strokeWidth="3"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                    />
+                  )}
+                  
+                  {scores.map((s, idx) => {
+                    if (idx === 1 && !hasMid) return null;
+                    const circleX = 60 + 190 * idx;
+                    const circleY = 110 - s.score;
+                    return (
+                      <g key={idx}>
+                        <circle cx={circleX} cy={circleY} r="5" fill="#fff" stroke="#1e3a8a" strokeWidth="3" />
+                        <rect x={circleX - 18} y={circleY - 22} width="36" height="14" rx="3" fill="#1e3a8a" />
+                        <text x={circleX} y={circleY - 12} fontSize="8" fill="#fff" fontWeight="bold" textAnchor="middle">{s.score}점</text>
+                        <text x={circleX} y="115" fontSize="8" fill="#64748b" fontWeight="bold" textAnchor="middle">{s.label}</text>
                       </g>
-                    )}
+                    );
+                  })}
+                </svg>
+              </div>
 
-                    {/* 중간 포인트 */}
-                    {midScore !== null && (
-                      <g>
-                        <circle cx="100" cy={60 - midScore * 0.5} r="2.5" fill="#fff" stroke="#b28a50" strokeWidth="1.5" />
-                        <text x="100" y={52 - midScore * 0.5} fontSize="5" fill="#333" fontWeight="bold" textAnchor="middle">{midScore}점</text>
-                        <text x="100" y="67" fontSize="5" fill="#64748b" textAnchor="middle">중간</text>
-                      </g>
-                    )}
-
-                    {/* 사후 포인트 */}
-                    {postScore !== null && (
-                      <g>
-                        <circle cx="170" cy={60 - postScore * 0.5} r="2.5" fill="#fff" stroke="#ef4444" strokeWidth="1.5" />
-                        <text x="170" y={52 - postScore * 0.5} fontSize="5" fill="#ef4444" fontWeight="bold" textAnchor="middle">{postScore}점</text>
-                        <text x="170" y="67" fontSize="5" fill="#64748b" textAnchor="middle">사후</text>
-                      </g>
-                    )}
-                  </svg>
+              <div className="report-panel" style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: "1rem", padding: "0.8rem", borderLeft: "5px solid #b28a50", backgroundColor: "#fafbfc", border: "1px solid #e2e8f0", borderLeftWidth: "5px" }}>
+                <TrendingUp size={24} style={{ color: "#b28a50", flexShrink: 0 }} />
+                <div>
+                  <h4 style={{ fontSize: "0.8rem", fontWeight: 700, color: "#1e3a8a", marginBottom: "0.1rem" }}>
+                    학습 성과 핵심 지표 분석
+                  </h4>
+                  <p style={{ fontSize: "0.75rem", color: "#4b5563", lineHeight: 1.4, margin: 0 }}>
+                    {selectedStudent} 학생은 사전 평가 대비 최종 사후 평가에서 총 <strong>{growth}점의 성과 향상</strong>을 달성해 냈습니다.
+                    체계적인 훈련과 반복적인 피드백 구조를 통하여, 오개념 영역의 복원이 가시적으로 수행되었음이 성취 지표 데이터를 통하여 객관적으로 입증됩니다.
+                  </p>
                 </div>
               </div>
             </div>
 
-            {/* Section 2: 멘토링 정성 피드백 변화 추이 */}
-            <div className="report-section" style={{ breakInside: "avoid", marginBottom: "1.2rem" }}>
+            {/* Section 2: 회차별 문항 성적 대조표 */}
+            <div className="report-section" style={{ marginBottom: "0", breakInside: "avoid" }}>
               <div className="section-title-container" style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.65rem" }}>
-                <span className="section-num" style={{ backgroundColor: "#b28a50", color: "#fff", width: "1.3rem", height: "1.3rem", borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.75rem" }}>2</span>
-                <span className="section-title" style={{ fontSize: "0.9rem", fontWeight: "bold", color: "#1e3a8a" }}>멘토링 정성 피드백 변화 추이</span>
+                <span className="section-num" style={{ backgroundColor: "#1e3a8a", color: "#fff", width: "1.3rem", height: "1.3rem", borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.75rem" }}>2</span>
+                <span className="section-title" style={{ fontSize: "0.9rem", fontWeight: "bold", color: "#1e3a8a" }}>회차별 문항 성적 대조표</span>
               </div>
-
-              <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
-                {/* 사전 관찰 노트 */}
-                <div style={{ border: "1px solid #e2e8f0", borderRadius: "5px", padding: "0.5rem 0.8rem", backgroundColor: "#fafbfc" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.2rem" }}>
-                    <span style={{ fontSize: "0.7rem", fontWeight: "bold", color: "#475569" }}>사전 과정 관찰 노트</span>
-                    <span style={{ fontSize: "0.6rem", color: "#94a3b8" }}>기록 멘토: {preEval?.mentorName || "지도 멘토"} | {preEval?.date || "-"}</span>
-                  </div>
-                  <div style={{ fontSize: "0.72rem", color: "#334155", fontStyle: "italic", lineHeight: 1.4 }}>
-                    "{preEval?.mentorNotes || "사전 관찰 피드백 기록이 없습니다."}"
-                  </div>
-                </div>
-
-                {/* 중간 관찰 노트 */}
-                <div style={{ border: "1px solid #e2e8f0", borderRadius: "5px", padding: "0.5rem 0.8rem", backgroundColor: "#fafbfc" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.2rem" }}>
-                    <span style={{ fontSize: "0.7rem", fontWeight: "bold", color: "#b28a50" }}>중간 과정 관찰 노트</span>
-                    <span style={{ fontSize: "0.6rem", color: "#94a3b8" }}>기록 멘토: {midEval?.mentorName || "지도 멘토"} | {midEval?.date || "-"}</span>
-                  </div>
-                  <div style={{ fontSize: "0.72rem", color: "#334155", fontStyle: "italic", lineHeight: 1.4 }}>
-                    "{midEval?.mentorNotes || "중간 과정 관찰 피드백 기록이 없습니다."}"
-                  </div>
-                </div>
-
-                {/* 사후 관찰 노트 */}
-                <div style={{ border: "1px solid #e2e8f0", borderRadius: "5px", padding: "0.5rem 0.8rem", backgroundColor: "#fafbfc" }}>
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "0.2rem" }}>
-                    <span style={{ fontSize: "0.7rem", fontWeight: "bold", color: "#ef4444" }}>사후 과정 코칭 노트</span>
-                    <span style={{ fontSize: "0.6rem", color: "#94a3b8" }}>기록 연구원: {postEval?.mentorName || "수석 연구원"} | {postEval?.date || "-"}</span>
-                  </div>
-                  <div style={{ fontSize: "0.72rem", color: "#334155", fontStyle: "italic", lineHeight: 1.4 }}>
-                    "{postEval?.mentorNotes || "사후 최종 코칭 피드백 기록이 없습니다."}"
-                  </div>
-                </div>
-              </div>
+              
+              <table className="report-table" style={{ fontSize: "0.72rem", width: "100%", borderCollapse: "collapse" }}>
+                <thead>
+                  <tr style={{ backgroundColor: "#1e3a8a", color: "#ffffff" }}>
+                    <th style={{ width: "20%", padding: "0.5rem", border: "1px solid #cbd5e1" }}>평가 회차</th>
+                    <th style={{ width: "15%", padding: "0.5rem", border: "1px solid #cbd5e1" }}>환산 점수</th>
+                    <th style={{ width: "20%", padding: "0.5rem", border: "1px solid #cbd5e1" }}>취득 수준</th>
+                    <th style={{ width: "15%", padding: "0.5rem", border: "1px solid #cbd5e1" }}>맞은 문항 수</th>
+                    <th style={{ padding: "0.5rem", border: "1px solid #cbd5e1" }}>오답 발생 문항 번호</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {studentEvals.map((e, idx) => {
+                    const s = calculateReportStats(e.grade, e.subject, e.answers);
+                    const wrongNums = s.detailedResults.filter(q => !q.isCorrect).map(q => q.q_idx);
+                    return (
+                      <tr key={idx} style={{ backgroundColor: idx % 2 === 1 ? "#f8fafc" : "#ffffff" }}>
+                        <td className="center" style={{ fontWeight: 700, padding: "0.5rem", border: "1px solid #cbd5e1", textAlign: "center" }}>{e.examType} 평가</td>
+                        <td className="center" style={{ fontWeight: 600, padding: "0.5rem", border: "1px solid #cbd5e1", textAlign: "center", color: "#1e3a8a" }}>{s.score}점</td>
+                        <td className="center" style={{ padding: "0.5rem", border: "1px solid #cbd5e1", textAlign: "center" }}>
+                          <span style={{ padding: "0.15rem 0.4rem", borderRadius: "4px", fontSize: "0.65rem", fontWeight: "bold", backgroundColor: s.achievementLevel === "도달" ? "#d1fae5" : "#fee2e2", color: s.achievementLevel === "도달" ? "#065f46" : "#991b1b" }}>
+                            {s.achievementLevel}
+                          </span>
+                        </td>
+                        <td className="center" style={{ padding: "0.5rem", border: "1px solid #cbd5e1", textAlign: "center" }}>{s.correctCount} / {s.totalCount}</td>
+                        <td style={{ color: "#ef4444", fontSize: "0.72rem", padding: "0.5rem", border: "1px solid #cbd5e1" }}>
+                          {wrongNums.length > 0 ? `${wrongNums.join(", ")}번 문항` : "오답 없음 (완전 학습)"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
 
-          <div className="report-footer" style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", borderTop: "1px solid #e2e8f0", paddingTop: "0.4rem", fontSize: "0.65rem", color: "#94a3b8" }}>
+          <div className="report-footer" style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid #e2e8f0", paddingTop: "0.4rem", fontSize: "0.65rem", color: "#94a3b8" }}>
             <span>ⓒ Learnway School & SGS입시전략연구소</span>
             <span>Page 1 of 2</span>
           </div>
@@ -400,7 +389,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                   </div>
                 </div>
 
-                {/* 2단 그리드 컨테이너 */}
+                {/* 2단 그리드 컨테이너 (좌: 오개념, 우: 지도법) */}
                 <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
                   {/* 2. 학습성장 핵심 오개념 교정 역사 */}
                   <div className="coaching-card" style={{ borderLeft: "4px solid #10b981", backgroundColor: "#fff", border: "1px solid #e2e8f0", borderLeftWidth: "4px", padding: "0.7rem 0.8rem", borderRadius: "6px", breakInside: "avoid" }}>
@@ -496,7 +485,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
           <div className="report-footer" style={{ borderTop: "1px solid #e2e8f0", paddingTop: "0.3rem", fontSize: "0.65rem", color: "#94a3b8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span>ⓒ Learnway School & SGS입시전략연구소</span>
-            <span style={{ fontWeight: "bold", color: "#333" }}>Page 2 of 2</span>
+            <span style={{ fontWeight: "bold", color: "#333" }}>최종 종결 성과보고서 | Page 2 of 2</span>
           </div>
         </div>
       </div>
