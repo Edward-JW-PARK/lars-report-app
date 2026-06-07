@@ -3,10 +3,11 @@ import React, { useState, useEffect } from "react";
 import { DashboardScreen } from "./components/DashboardScreen";
 import { InputScreen } from "./components/InputScreen";
 import { ReportView } from "./components/ReportView";
+import { OutcomeReportView } from "./components/OutcomeReportView"; // 신설할 최종 성과보고서 전용 컴포넌트
 import { BookOpen, Sparkles } from "lucide-react";
 import { MATH_BLUEPRINT, ENGLISH_BLUEPRINT } from "./data/blueprintMetadata";
 
-interface Evaluation {
+export interface Evaluation {
   id: string;
   studentName: string;
   grade: "middle_1" | "middle_2" | "middle_3";
@@ -19,7 +20,6 @@ interface Evaluation {
   aiResult?: any;
 }
 
-// Seed initial mock data for Park Min-gun (matching the Matholic PDF)
 export const INITIAL_EVALUATIONS: Evaluation[] = [
   {
     id: "eval-mingun-pre",
@@ -32,19 +32,14 @@ export const INITIAL_EVALUATIONS: Evaluation[] = [
     date: "2026.04.27",
     answers: {
       1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: true, 9: true, 10: true,
-      11: true, 12: true, 13: true, 
-      14: false, // 곱셈 공식의 활용 (틀림)
-      15: true, 16: true, 
-      17: false, // 곱셈 공식의 활용 (틀림)
-      18: true, 19: true, 
-      20: false, // 복잡한 식의 인수분해 (틀림)
+      11: true, 12: true, 13: true, 14: false, 15: true, 16: true, 17: false, 18: true, 19: true, 20: false,
       21: true, 22: true, 23: true, 24: true, 25: true
     },
     aiResult: {
-      overallAnalysis: "박민건 학생은 제곱근과 실수의 대소 비교, 지수법칙의 기초 연산 등 기본 영역에서 뛰어난 직관과 높은 성취(88점)를 나타내고 있습니다. 전반적인 수학적 이해력과 계산 속도는 우수하나, 정밀성과 심화 집중력이 다소 흔들리는 양상을 보입니다.",
-      conceptAnalysis: "곱셈 공식의 변형식 적용(14, 17번) 및 복잡한 식의 치환형 인수분해(20번)에서 개념 오답이 관찰됩니다. 이는 단순히 공식을 암기한 수준에 머무르고 있어, 여러 식의 묶음이나 문맥상 변형 공식을 입체적으로 치환해 응용하는 힘이 약함을 의미합니다.",
-      coachingPrescription: "1단계: (x + y)² = x² + 2xy + y²의 전개 과정을 면적 모델이나 직관적인 기하 모형으로 보여주며 대칭적 공식을 스스로 유도하게 지도하십시오.\n2단계: 복잡한 항의 식은 다른 문자로 크게 치환(예: A = x-2)하여 간소화하고 전개하는 과정을 풀이 과정에 생략 없이 쓰도록 유도하십시오.\n3단계: 매주 10분씩 멘토링 초반에 인수분해 오답 역추적 훈련을 통해 실수를 정정하는 시간을 가지십시오.",
-      actionPlan: "1. 완전제곱식의 변형 공식 3종을 백지에 스스로 유도하고 멘토에게 구두로 설명해 보기.\n2. 매일 3문제씩 치환형 인수분해 문제 식 설계부터 꼼꼼히 적으며 풀어보는 훈련하기."
+      overallAnalysis: "박민건 학생은 제곱근과 실수의 대소 비교, 지수법칙의 기초 연산 등 기본 영역에서 뛰어난 직관과 높은 성취(88점)를 나타내고 있습니다.",
+      conceptAnalysis: "곱셈 공식의 변형식 적용 및 복잡한 식의 치환형 인수분해에서 개념 오답이 관찰됩니다.",
+      coachingPrescription: "[1단계] 대칭적 공식을 유도하게 지도하십시오.\n[2단계] 항의 식은 다른 문자로 치환하게 하십시오.",
+      actionPlan: "1. 완전제곱식 유도 설명해보기.\n2. 식 설계 꼼꼼히 적기."
     }
   },
   {
@@ -54,32 +49,34 @@ export const INITIAL_EVALUATIONS: Evaluation[] = [
     subject: "math",
     examType: "중간",
     mentorName: "박하늘 코치",
-    mentorNotes: "곱셈공식과 인수분해 영역을 멘토와 보충 학습한 후 치른 시험. 식을 치환해서 푸는 형태에 대해 자신감을 얻었으나, 여전히 연립방정식 활용 실생활 문제에서 식이 막히는 부분이 존재함.",
+    mentorNotes: "곱셈공식과 인수분해 영역을 보충 학습한 후 치른 시험. 식을 치환해서 푸는 형태에 자신감을 얻었으나 연립방정식 활용 실생활 문제에서 식이 다소 흔들림.",
     date: "2026.05.20",
     answers: {
       1: true, 2: true, 3: true, 4: true, 5: true, 6: true, 7: true, 8: true, 9: true, 10: true,
       11: true, 12: true, 13: true, 14: true, 15: true, 16: true, 17: true, 18: true, 19: true, 20: true,
-      21: false, // 원의 성질 각도 (틀림)
-      22: true, 23: true, 
-      24: false, // 통계 대푯값 (틀림)
-      25: true
+      21: false, 22: true, 23: true, 24: false, 25: true
     },
     aiResult: {
-      overallAnalysis: "박민건 학생은 중간 평가에서 92점을 기록하며 직전 사전 평가(88점) 대비 눈에 띄게 향상되었습니다. 특히 이전의 취약점이었던 곱셈공식 변형과 치환 인수분해 문제를 모두 완벽하게 해결하며 학습 교정의 긍정적인 성과를 보였습니다.",
-      conceptAnalysis: "원의 중심각과 접선 성질이 결합된 기하 각도 문항(21번)과 통계 대푯값 계산(24번)에서 경미한 실수가 발생했습니다. 개념 누수라기보다는 기하학적 도형의 위치 관계 단서 파악과 자료 정렬 시 발생한 단순 연산 실수에 가깝습니다.",
-      coachingPrescription: "1단계: 원의 접선과 반지름이 만나는 지점이 '직각(90도)'이 된다는 기본 직교 성질을 도형 위에 반드시 표시하고 시작하도록 가이드하십시오.\n2단계: 자료의 중앙값을 구할 때는 반드시 크기 순서대로 숫자를 다시 나열하여 중복이나 누락이 없는지 시각적으로 체크하도록 피드백하십시오.",
-      actionPlan: "1. 기하 문제를 풀 때 '반지름'과 '직각 표시'를 붉은 펜으로 먼저 그리는 훈련하기.\n2. 자료 분석 시 항상 정렬을 수동으로 검증하는 체크리스트 1개 실천하기."
+      overallAnalysis: "박민건 학생은 중간 평가에서 92점을 기록하며 직전 사전 평가 대비 눈에 띄게 향상되었습니다.",
+      conceptAnalysis: "원의 중심각과 접선 성질이 결합된 기하 각도 문항과 통계 대푯값 계산에서 경미한 실수가 발생했습니다.",
+      coachingPrescription: "[1단계] 직각 성질을 도형 위에 반드시 표시하게 지도하십시오.\n[2단계] 크기 순서대로 숫자를 다시 나열하여 중복이 없게 하십시오.",
+      actionPlan: "1. 원의 반지름과 직각 표시 먼저 그리기.\n2. 정렬 체크리스트 실천하기."
     }
   }
 ];
 
 export const App: React.FC = () => {
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
-
-  const [currentScreen, setCurrentScreen] = useState<"list" | "input" | "report">("list");
+  
+  // "outcome" 스크린 분기 추가 (최종 성과 보고서 전용 화면)
+  const [currentScreen, setCurrentScreen] = useState<"list" | "input" | "report" | "outcome">("list");
   const [selectedEvalId, setSelectedEvalId] = useState<string | null>(null);
   const [editingEvalId, setEditingEvalId] = useState<string | null>(null);
   const [isGeneratingAI, setIsGeneratingAI] = useState(false);
+
+  // 최종 성과보고서 전용 분석 상태값 저장소
+  const [finalOutcomeResult, setFinalOutcomeResult] = useState<any | null>(null);
+  const [selectedStudentMeta, setSelectedStudentMeta] = useState<{name: string, grade: string, subject: string} | null>(null);
 
   // 로컬 DB 실시간 데이터 로드
   useEffect(() => {
@@ -100,7 +97,7 @@ export const App: React.FC = () => {
   const activeEvaluation = evaluations.find((e) => e.id === selectedEvalId);
   const editingEvaluation = evaluations.find((e) => e.id === editingEvalId);
 
-  // Helper to generate AI report for a specific evaluation
+  // 개별 평가용 코칭 리포트 생성 함수 (2~3초 간결형)
   const generateAIReportForEval = async (targetEval: Evaluation) => {
     if (!targetEval) return;
 
@@ -127,9 +124,7 @@ export const App: React.FC = () => {
     try {
       const response = await fetch("/api/generate-coaching-report", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           studentName: targetEval.studentName,
           grade: targetEval.grade,
@@ -148,19 +143,14 @@ export const App: React.FC = () => {
       const aiData = await response.json();
       const updatedEval = { ...targetEval, aiResult: aiData };
 
-      // DB에 수정사항 반영 (PUT)
       await fetch(`/api/evaluations/${targetEval.id}`, {
         method: "PUT",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatedEval),
       });
 
       setEvaluations((prev) =>
-        prev.map((e) =>
-          e.id === targetEval.id ? updatedEval : e
-        )
+        prev.map((e) => e.id === targetEval.id ? updatedEval : e)
       );
     } catch (e: any) {
       console.error(e);
@@ -170,9 +160,8 @@ export const App: React.FC = () => {
     }
   };
 
-  // 3대 평가(사전, 중간, 사후) 누적 시계열 종합 성과분석 보고서 생성 함수 (신설)
-  const generateFinalOutcomeReport = async (studentName: string, grade: "middle_1" | "middle_2" | "middle_3", subject: "math" | "english") => {
-    // 해당 학생의 동일 과목 학년의 전체 평가 기록 추출 및 사전 -> 중간 -> 사후 순서 정렬
+  // ★ [해결의 핵심] 우측 "성과보고서 발행" 버튼 전용: 3대 평가 역추적 시계열 종합분석 생성 함수
+  const handleGenerateFinalOutcome = async (studentName: string, grade: "middle_1" | "middle_2" | "middle_3", subject: "math" | "english") => {
     const studentEvals = evaluations
       .filter(e => e.studentName === studentName && e.grade === grade && e.subject === subject)
       .sort((a, b) => {
@@ -180,8 +169,19 @@ export const App: React.FC = () => {
         return order[a.examType] - order[b.examType];
       });
 
-    if (studentEvals.length < 2) {
-      alert("종합 성과 분석보고서를 위해서는 최소 2개 회차(사전, 중간 등) 이상의 평가 기록이 시스템에 등록되어 있어야 합니다.");
+    if (studentEvals.length === 0) {
+      alert("평가 기록이 없습니다.");
+      return;
+    }
+
+    setSelectedStudentMeta({ name: studentName, grade, subject });
+    
+    // 만약 이미 최종 성과 분석(aiResult)을 받아둔 최신 평가(예: 사후 혹은 중간)가 있다면, API 요청을 생략하고 전용 뷰로 즉시 진입
+    const latestEvalWithAi = [...studentEvals].reverse().find(e => e.aiResult && e.aiResult.overallAnalysis && e.aiResult.overallAnalysis.length > 100);
+    
+    if (latestEvalWithAi) {
+      setFinalOutcomeResult(latestEvalWithAi.aiResult);
+      setCurrentScreen("outcome");
       return;
     }
 
@@ -190,9 +190,7 @@ export const App: React.FC = () => {
     try {
       const response = await fetch("/api/generate-outcome-report", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           studentName,
           grade,
@@ -202,12 +200,13 @@ export const App: React.FC = () => {
       });
 
       if (!response.ok) {
-        throw new Error("누적 성과 종합 분석 생성에 실패했습니다.");
+        throw new Error("종합 최종 성과분석에 실패했습니다.");
       }
 
       const finalOutcomeData = await response.json();
-      
-      // 누적 최종 분석 성과 보고 데이터를 가장 마지막 최신 평가 레코드(예: 사후 평가)의 aiResult로 최종 바인딩합니다.
+      setFinalOutcomeResult(finalOutcomeData);
+
+      // 분석 보고서 결과를 사후(혹은 가장 최신) 평가의 DB 필드에 업데이트하여 영구 보존
       const latestEval = studentEvals[studentEvals.length - 1];
       const updatedEval = { ...latestEval, aiResult: finalOutcomeData };
 
@@ -220,11 +219,11 @@ export const App: React.FC = () => {
       setEvaluations((prev) =>
         prev.map((e) => e.id === latestEval.id ? updatedEval : e)
       );
-      
-      alert("🎉 사전, 중간, 사후 데이터를 모두 역추적한 최고급 종합 성과보고 의견 갱신이 정상적으로 완료되었습니다!");
+
+      setCurrentScreen("outcome");
     } catch (e: any) {
       console.error(e);
-      alert(`최종 성과 보고 분석 생성 중 에러 발생: ${e.message || e}`);
+      alert(`종합 성과 분석보고서 발행 오류: ${e.message || e}`);
     } finally {
       setIsGeneratingAI(false);
     }
@@ -242,7 +241,6 @@ export const App: React.FC = () => {
     let targetEval: Evaluation;
 
     if (editingEvalId) {
-      // Edit mode
       const editingEval = evaluations.find((e) => e.id === editingEvalId);
       const isDataChanged = !(
         editingEval &&
@@ -260,7 +258,6 @@ export const App: React.FC = () => {
       };
 
       try {
-        // DB에 PUT 수정 요청
         const res = await fetch(`/api/evaluations/${editingEvalId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
@@ -284,7 +281,6 @@ export const App: React.FC = () => {
         alert(`저장 중 오류 발생: ${err.message}`);
       }
     } else {
-      // Add new
       const newId = `eval-${Date.now()}`;
       targetEval = {
         id: newId,
@@ -294,7 +290,6 @@ export const App: React.FC = () => {
       };
 
       try {
-        // DB에 POST 추가 요청
         const res = await fetch("/api/evaluations", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -342,7 +337,6 @@ export const App: React.FC = () => {
     }
   };
 
-  // Explicitly trigger or regenerate AI report from report screen
   const handleGenerateAIReport = async () => {
     if (activeEvaluation) {
       await generateAIReportForEval(activeEvaluation);
@@ -351,7 +345,6 @@ export const App: React.FC = () => {
 
   return (
     <div className="app-container">
-      {/* App Header (Hidden on print) */}
       <header className="app-header">
         <div className="logo-group">
           <BookOpen size={32} style={{ color: "var(--accent-gold)" }} />
@@ -366,7 +359,6 @@ export const App: React.FC = () => {
         </div>
       </header>
 
-      {/* Main Content Area */}
       <main>
         {currentScreen === "list" && (
           <DashboardScreen
@@ -378,6 +370,9 @@ export const App: React.FC = () => {
             onView={handleViewReport}
             onEdit={handleEditEvaluation}
             onDelete={handleDeleteEvaluation}
+            // ★ 우측 사이드바의 "성과보고서 발행" 클릭 시 트리거할 프롭스 연동
+            onGenerateFinalOutcome={handleGenerateFinalOutcome} 
+            isGeneratingAI={isGeneratingAI}
           />
         )}
 
@@ -400,8 +395,23 @@ export const App: React.FC = () => {
               setCurrentScreen("list");
             }}
             onRegenerateAI={handleGenerateAIReport}
-            onGenerateFinalOutcome={() => generateFinalOutcomeReport(activeEvaluation.studentName, activeEvaluation.grade, activeEvaluation.subject)}
             isGeneratingAI={isGeneratingAI}
+          />
+        )}
+
+        {/* ★ [신설 스크린] 성과보고서 발행 클릭 시 렌더링될 전용 성과 분석 뷰 */}
+        {currentScreen === "outcome" && selectedStudentMeta && (
+          <OutcomeReportView
+            studentName={selectedStudentMeta.name}
+            grade={selectedStudentMeta.grade as any}
+            subject={selectedStudentMeta.subject as any}
+            evaluations={evaluations.filter(e => e.studentName === selectedStudentMeta.name && e.grade === selectedStudentMeta.grade && e.subject === selectedStudentMeta.subject)}
+            aiResult={finalOutcomeResult}
+            onBack={() => {
+              setFinalOutcomeResult(null);
+              setSelectedStudentMeta(null);
+              setCurrentScreen("list");
+            }}
           />
         )}
       </main>
