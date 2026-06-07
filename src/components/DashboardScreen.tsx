@@ -115,9 +115,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     }, 50);
   };
 
-  // ==============================================================
-  // 4. 고품격 아카데믹 2페이지 리포트 마크업 뷰 (이전 고가치 테마 복원)
-  // ==============================================================
+  // Printable Final Report Component (A4 2페이지 인쇄 보장 + 입체적 SVG 성장 그래프 포함 버전)
   if (showFinalReport && selectedStudent) {
     const scores = [
       { label: "사전", score: preScore || 0 },
@@ -167,7 +165,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           boxSizing: "border-box", 
           backgroundColor: "#ffffff", 
           boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)",
-          padding: "20mm",
+          padding: "18mm 20mm", 
           display: "flex",
           flexDirection: "column"
         }}>
@@ -327,110 +325,116 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           페이지 경계 (인쇄 시 이 선을 기준으로 분할 인쇄됩니다)
         </div>
 
-        {/* ----------------- PAGE 2: Claude AI 정성 분석 및 솔루션 ----------------- */}
+        {/* ----------------- PAGE 2: Claude Sonnet 4.6 정성 분석 및 솔루션 ----------------- */}
         <div className="report-a4-page" style={{ 
           height: "296mm", 
           boxSizing: "border-box", 
           backgroundColor: "#ffffff", 
           boxShadow: "0 10px 25px -5px rgba(0,0,0,0.1)",
-          padding: "20mm",
+          padding: "16mm 20mm", 
           display: "flex",
-          flexDirection: "column"
+          flexDirection: "column",
+          justifyContent: "space-between"
         }}>
-          <div className="report-header" style={{ borderBottom: "2px solid #1e3a8a", paddingBottom: "0.5rem", marginBottom: "1.5rem" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
-              <span style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 600 }}>LEARNWAY SCHOOL MENTORING OUTCOME REPORT</span>
-              <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "#1e3a8a" }}>학생명: {selectedStudent} | 최종 종합 소견보고</span>
+          <div>
+            <div className="report-header" style={{ borderBottom: "2px solid #1e3a8a", paddingBottom: "0.5rem", marginBottom: "1.2rem" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end" }}>
+                <span style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 600 }}>LEARNWAY SCHOOL MENTORING OUTCOME REPORT</span>
+                <span style={{ fontSize: "0.85rem", fontWeight: 700, color: "#1e3a8a" }}>학생명: {selectedStudent} | 최종 종합 소견보고</span>
+              </div>
+            </div>
+
+            <div className="report-section" style={{ display: "flex", flexDirection: "column" }}>
+              <div className="section-title-container" style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1rem" }}>
+                <span className="section-num" style={{ backgroundColor: "#1e3a8a", color: "#fff", width: "1.3rem", height: "1.5rem", borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.75rem" }}>3</span>
+                <span className="section-title" style={{ fontSize: "0.95rem", fontWeight: "bold", color: "#1e3a8a" }}>SGS Learnway 최종 종합 분석 및 멘토 피드백</span>
+              </div>
+              
+              <div className="coaching-box-container" style={{ display: "flex", flexDirection: "column", gap: "0.8rem" }}>
+                
+                {/* 1. 지도 소견 카드 */}
+                <div className="coaching-card full-width" style={{ borderLeft: "4px solid #b28a50", backgroundColor: "#fff", border: "1px solid #e2e8f0", borderLeftWidth: "4px", padding: "0.85rem", borderRadius: "6px", breakInside: "avoid" }}>
+                  <div className="coaching-card-title" style={{ color: "#b28a50", fontWeight: "bold", fontSize: "0.8rem", marginBottom: "0.3rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                    💡 멘토 종합 지도 소견 및 관찰 변화 (장문 분석)
+                  </div>
+                  <div className="coaching-card-body" style={{ fontSize: "0.75rem", color: "#334155", lineHeight: 1.5, wordBreak: "keep-all" }}>
+                    {isGeneratingAI ? (
+                      <div style={{ color: "#b28a50", fontWeight: "600" }} className="animate-pulse">
+                        Claude Sonnet 4.6이 사전/중간/사후 성취도 데이터를 대조 분석하여 상담용 종합 소견을 기술 중입니다... (약 10초 내외 소요)
+                      </div>
+                    ) : aiReportData.overallAnalysis ? (
+                      aiReportData.overallAnalysis
+                    ) : (
+                      "사전 분석 데이터를 찾을 수 없습니다. 우측 상단의 [AI 성과 정밀 분석] 버튼을 클릭해 소견서 생성을 활성화해 주십시오."
+                    )}
+                  </div>
+                </div>
+
+                {/* 2. 학습성장 핵심 오개념 교정 역사 */}
+                <div className="coaching-card full-width" style={{ borderLeft: "4px solid #10b981", backgroundColor: "#fff", border: "1px solid #e2e8f0", borderLeftWidth: "4px", padding: "0.85rem", borderRadius: "6px", breakInside: "avoid" }}>
+                  <div className="coaching-card-title" style={{ color: "#10b981", fontWeight: "bold", fontSize: "0.8rem", marginBottom: "0.3rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                    🎯 학습성장 핵심 오개념 교정 역사
+                  </div>
+                  <div className="coaching-card-body" style={{ fontSize: "0.75rem", color: "#334155", lineHeight: 1.5, wordBreak: "keep-all" }}>
+                    {isGeneratingAI ? (
+                      <div style={{ color: "#10b981", fontWeight: "600" }} className="animate-pulse">
+                        누적 정량 통계를 바탕으로 시계열 흐름을 복원하고 있습니다...
+                      </div>
+                    ) : aiReportData.conceptAnalysis ? (
+                      aiReportData.conceptAnalysis
+                    ) : (
+                      "성과 분석 결과를 기다리고 있습니다. 실시간 생성 처리가 완료되면 이 항목에 피드백이 정교하게 채워집니다."
+                    )}
+                  </div>
+                </div>
+
+                {/* 3. 추천 지도 노하우 및 가정 동독 지도법 */}
+                <div className="coaching-card full-width" style={{ borderLeft: "4px solid #3b82f6", backgroundColor: "#fff", border: "1px solid #e2e8f0", borderLeftWidth: "4px", padding: "0.85rem", borderRadius: "6px", breakInside: "avoid" }}>
+                  <div className="coaching-card-title" style={{ color: "#3b82f6", fontWeight: "bold", fontSize: "0.8rem", marginBottom: "0.3rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                    ✏ 추천 지도 노하우 및 가정 동독 지도법
+                  </div>
+                  <div className="coaching-card-body" style={{ fontSize: "0.75rem", color: "#334155", lineHeight: 1.5, wordBreak: "keep-all" }}>
+                    {isGeneratingAI ? (
+                      <div style={{ color: "#3b82f6", fontWeight: "600" }} className="animate-pulse">
+                        가정과 교실이 연계된 맞춤형 티칭 솔루션을 정식 컴파일하고 있습니다...
+                      </div>
+                    ) : aiReportData.coachingPrescription ? (
+                      aiReportData.coachingPrescription
+                    ) : (
+                      "가정 학습 및 연계 피드백 연계 지도 설계 가이드가 준비 중입니다."
+                    )}
+                  </div>
+                </div>
+
+                {/* 4. 실천 액션 플랜 */}
+                <div className="coaching-card full-width" style={{ borderLeft: "4px solid #ef4444", backgroundColor: "#fff", border: "1px solid #e2e8f0", borderLeftWidth: "4px", padding: "0.85rem", borderRadius: "6px", breakInside: "avoid" }}>
+                  <div className="coaching-card-title" style={{ color: "#ef4444", fontWeight: "bold", fontSize: "0.8rem", marginBottom: "0.3rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                    🔥 차기 학기 상급 연계를 위한 핵심 실천 액션 플랜
+                  </div>
+                  <div className="coaching-card-body" style={{ fontSize: "0.75rem", color: "#334155", lineHeight: 1.5, wordBreak: "keep-all" }}>
+                    {isGeneratingAI ? (
+                      <div style={{ color: "#ef4444", fontWeight: "600" }} className="animate-pulse">
+                        차기 학습 전략 목표 로드맵을 구성하는 중입니다...
+                      </div>
+                    ) : aiReportData.actionPlan ? (
+                      aiReportData.actionPlan.split('\n').map((line: string, lIdx: number) => (
+                        <div key={lIdx} style={{ marginBottom: "0.15rem" }}>{line}</div>
+                      ))
+                    ) : (
+                      "지속 발전을 보장하기 위한 액션 플랜 가이드 항목입니다."
+                    )}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div className="report-section" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
-            <div className="section-title-container" style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1.2rem" }}>
-              <span className="section-num" style={{ backgroundColor: "#1e3a8a", color: "#fff", width: "1.5rem", height: "1.5rem", borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.8rem" }}>3</span>
-              <span className="section-title" style={{ fontSize: "1rem", fontWeight: "bold", color: "#1e3a8a" }}>SGS Learnway 최종 종합 분석 및 멘토 피드백</span>
-            </div>
-            
-            <div className="coaching-box-container" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-              {/* 1. 지도 소견 카드 */}
-              <div className="coaching-card full-width" style={{ borderLeft: "4px solid #b28a50", backgroundColor: "#fff", border: "1px solid #e2e8f0", borderLeftWidth: "4px", padding: "1rem", borderRadius: "6px", breakInside: "avoid" }}>
-                <div className="coaching-card-title" style={{ color: "#b28a50", fontWeight: "bold", fontSize: "0.85rem", marginBottom: "0.4rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                  💡 멘토 종합 지도 소견 및 관찰 변화 (장문 분석)
-                </div>
-                <div className="coaching-card-body" style={{ fontSize: "0.78rem", color: "#334155", lineHeight: 1.6 }}>
-                  {isGeneratingAI ? (
-                    <div style={{ color: "#b28a50", fontWeight: "600" }} className="animate-pulse">
-                      Claude 3.5 Sonnet이 사전/중간/사후 성취도 데이터를 대조 분석하여 상담용 종합 소견을 기술 중입니다... (약 10초 내외 소요)
-                    </div>
-                  ) : aiReportData.overallAnalysis ? (
-                    aiReportData.overallAnalysis
-                  ) : (
-                    "사전 분석 데이터를 찾을 수 없습니다. 우측 상단의 [AI 성과 정밀 분석] 버튼을 클릭해 소견서 생성을 활성화해 주십시오."
-                  )}
-                </div>
-              </div>
-
-              {/* 2. 학습성장 핵심 오개념 교정 역사 */}
-              <div className="coaching-card full-width" style={{ borderLeft: "4px solid #10b981", backgroundColor: "#fff", border: "1px solid #e2e8f0", borderLeftWidth: "4px", padding: "1rem", borderRadius: "6px", breakInside: "avoid" }}>
-                <div className="coaching-card-title" style={{ color: "#10b981", fontWeight: "bold", fontSize: "0.85rem", marginBottom: "0.4rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                  🎯 학습성장 핵심 오개념 교정 역사
-                </div>
-                <div className="coaching-card-body" style={{ fontSize: "0.78rem", color: "#334155", lineHeight: 1.6 }}>
-                  {isGeneratingAI ? (
-                    <div style={{ color: "#10b981", fontWeight: "600" }} className="animate-pulse">
-                      누적 정량 통계를 바탕으로 시계열 흐름을 복원하고 있습니다...
-                    </div>
-                  ) : aiReportData.conceptAnalysis ? (
-                    aiReportData.conceptAnalysis
-                  ) : (
-                    "성과 분석 결과를 기다리고 있습니다. 실시간 생성 처리가 완료되면 이 항목에 피드백이 정교하게 채워집니다."
-                  )}
-                </div>
-              </div>
-
-              {/* 3. 추천 지도 노하우 및 가정 동독 지도법 */}
-              <div className="coaching-card full-width" style={{ borderLeft: "4px solid #3b82f6", backgroundColor: "#fff", border: "1px solid #e2e8f0", borderLeftWidth: "4px", padding: "1rem", borderRadius: "6px", breakInside: "avoid" }}>
-                <div className="coaching-card-title" style={{ color: "#3b82f6", fontWeight: "bold", fontSize: "0.85rem", marginBottom: "0.4rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                  ✏ 추천 지도 노하우 및 가정 동독 지도법
-                </div>
-                <div className="coaching-card-body" style={{ fontSize: "0.78rem", color: "#334155", lineHeight: 1.6 }}>
-                  {isGeneratingAI ? (
-                    <div style={{ color: "#3b82f6", fontWeight: "600" }} className="animate-pulse">
-                      가정과 교실이 연계된 맞춤형 티칭 솔루션을 정식 컴파일하고 있습니다...
-                    </div>
-                  ) : aiReportData.coachingPrescription ? (
-                    aiReportData.coachingPrescription
-                  ) : (
-                    "가정 학습 및 연계 피드백 연계 지도 설계 가이드가 준비 중입니다."
-                  )}
-                </div>
-              </div>
-
-              {/* 4. 실천 액션 플랜 */}
-              <div className="coaching-card full-width" style={{ borderLeft: "4px solid #ef4444", backgroundColor: "#fff", border: "1px solid #e2e8f0", borderLeftWidth: "4px", padding: "1rem", borderRadius: "6px", breakInside: "avoid" }}>
-                <div className="coaching-card-title" style={{ color: "#ef4444", fontWeight: "bold", fontSize: "0.85rem", marginBottom: "0.4rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                  🔥 차기 학기 상급 연계를 위한 핵심 실천 액션 플랜
-                </div>
-                <div className="coaching-card-body" style={{ fontSize: "0.78rem", color: "#334155", lineHeight: 1.6 }}>
-                  {isGeneratingAI ? (
-                    <div style={{ color: "#ef4444", fontWeight: "600" }} className="animate-pulse">
-                      차기 학습 전략 목표 로드맵을 구성하는 중입니다...
-                    </div>
-                  ) : aiReportData.actionPlan ? (
-                    aiReportData.actionPlan
-                  ) : (
-                    "지속 발전을 보장하기 위한 액션 플랜 가이드 항목입니다."
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div className="report-footer" style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", borderTop: "1px solid #e2e8f0", paddingTop: "0.5rem", fontSize: "0.7rem", color: "#94a3b8" }}>
+          <div className="report-footer" style={{ borderTop: "1px solid #e2e8f0", paddingTop: "0.4rem", fontSize: "0.68rem", color: "#94a3b8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
             <span>ⓒ Learnway School & SGS입시전략연구소</span>
             <span style={{ fontWeight: "bold", color: "#333" }}>최종 종결 성과보고서 | Page 2 of 2</span>
           </div>
         </div>
-      </div>
+      </div> // <-- missing이었던 감싸는 컨테이너 report-workspace-container를 마침내 정상 폐쇄합니다.
     );
   }
 
