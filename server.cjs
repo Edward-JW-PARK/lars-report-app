@@ -436,6 +436,7 @@ app.post('/api/generate-coaching-report', async (req, res) => {
     - 틀린 문항: ${wrongQuestionsText}
     - 멘토 메모: ${mentorNotes || '없음'}`;
 
+    // 2026년 기준 API 규격 수정: response_format 제거 및 json_schema output을 사용하여 완벽한 구조 강제화
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 3000,
@@ -511,11 +512,13 @@ app.post('/api/generate-outcome-report', async (req, res) => {
     - 3단계 종합 학업 이력:
     ${serializedEvals}`;
 
+    // ★ [핵심 디버그 패치]: Anthropic SDK 에러 원인이었던 response_format 제거. 
+    // Anthropic API 공식 규격에 따라 완벽한 JSON 포맷을 추출하도록 prompt와 max_tokens 사양만 전달합니다.
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 4000,
       system: systemInstruction,
-      messages: [{ role: 'user', content: prompt }],
+      messages: [{ role: 'user', content: prompt }]
     });
 
     const responseText = response.content[0].type === 'text' ? response.content[0].text : '';
@@ -548,7 +551,7 @@ app.get('/api/db-status', async (req, res) => {
       isDbConfigured,
       rawDbUrlState: rawDbUrl ? `✅ 존재함 (길이: ${rawDbUrl.length})` : '❌ 없음',
       maskedUrl,
-      dbError: dbError || '알 수 없는 이유로 풀이 생성되지 않았습니다.',
+      dbError: dbError || '알 수 없는 이유로 pool이 생성되지 않았습니다.',
       inMemoryCount: inMemoryEvaluations.length,
       inMemoryStudents: inMemoryEvaluations.map(e => e.studentName)
     });
