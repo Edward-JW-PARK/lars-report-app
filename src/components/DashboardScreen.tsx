@@ -138,7 +138,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           </button>
         </div>
 
-        {/* ----------------- PAGE 1 ----------------- */}
+        {/* ----------------- PAGE 1 (LARS 6.pdf 기준 정량 페이지 완벽 대응) ----------------- */}
         <div className="report-a4-page" style={{ 
           pageBreakAfter: "always", 
           breakAfter: "page", 
