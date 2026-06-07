@@ -436,7 +436,6 @@ app.post('/api/generate-coaching-report', async (req, res) => {
     - 틀린 문항: ${wrongQuestionsText}
     - 멘토 메모: ${mentorNotes || '없음'}`;
 
-    // 2026년 기준 API 규격 수정: response_format 제거 및 json_schema output을 사용하여 완벽한 구조 강제화
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
       max_tokens: 3000,
@@ -454,7 +453,7 @@ app.post('/api/generate-coaching-report', async (req, res) => {
   }
 });
 
-// 5-2. POST /api/generate-outcome-report - 3대 평가 누적 최종 성과 분석 생성 (종합 분석용: 고밀도 장문 분석)
+// ★ [수정 및 극적 최적화 완료]: 3대 평가 누적 최종 성과 분석 전용 API (고밀도 극도 단축 프롬프트 및 원본 데이터 보존 버전)
 app.post('/api/generate-outcome-report', async (req, res) => {
   try {
     const { studentName, grade, subject, evaluations } = req.body;
@@ -489,21 +488,22 @@ app.post('/api/generate-outcome-report', async (req, res) => {
     const gradeLabel = grade === 'middle_1' ? '중학교 1학년' : grade === 'middle_2' ? '중학교 2학년' : '중학교 3학년';
     const subjectLabel = subject === 'math' ? '수학' : '영어';
 
+    // ★ [핵심 프롬프트 패치]: A4 종이 한 장 안에서 절대 줄글이 넘쳐 잘리거나 이탈하지 않도록 각 속성의 글자 길이를 타이트하게 강제 제어합니다.
     const systemInstruction = `당신은 대한민국 최고 권위의 교육 성과 진단 기관인 'SGS Learnway 교육사업단'의 수석 교수이자 학업 컨설턴트입니다. 
-    학생의 사전 -> 중간 -> 사후 평가 데이터를 기반으로 학부모 상담 및 최종 원격 포트폴리오용 '최종 성과 보고 의견'을 심도 있고 품격 넘치게 수립해 주십시오.
+    학생의 사전 -> 중간 -> 사후 평가 데이터를 기반으로 학부모 상담 및 최종 원격 포트폴리오용 '최종 성과 보고 의견'을 심도 있고 가독성 넘치게 수립해 주십시오.
 
     [작성 요구 규칙 - 절대 준수]
-    1. 결코 짧은 요약 형태나 다른 단순 템플릿 문구로 서술하지 마십시오. 학부모님이 상담을 통해 완전한 신뢰와 성취 변화를 직접 체감할 수 있도록 다정하고 논리 정연한 최고급 장문 경어체(~하였습니다, 권장합니다)로 작성하십시오.
-    2. 각 속성의 문자열은 최소 공백 포함 150자 ~ 300자 이상으로 문장들을 길고 밀도 높게 채우십시오.
-    3. 사전 단계의 약점(특히 사전 단계에서의 많은 오답)이 어떻게 극복되고 사후 단계의 고득점 성취로 도달하게 되었는지, 구체적인 수치 상승 폭(예: 사전 ${evaluations[0]?.score || 60}점에서 사후 ${evaluations[evaluations.length - 1]?.score || 76}점으로 성장)과 멘토의 티칭 내용을 상세히 엮어서 성장의 역사를 기술하십시오.
-    4. 학생의 오답 문항 정보와 멘토 메모들을 철저히 읽어 반영하십시오.
+    1. 인쇄 출력물(A4 용지 규격) 내의 카드 크기가 고정되어 있으므로, 텍스트가 흘러넘쳐 페이지가 깨지는 것을 절대 방지해야 합니다. 
+    2. 따라서 모든 필드의 응답 텍스트 길이는 **반드시 공백 포함 130자 이내(정확히 2~3문장 이내)**로 매우 타이트하고 명확하게 요약해 주십시오.
+    3. 사전 단계의 약점(특히 사전 단계에서의 많은 오답)이 어떻게 극복되고 사후 단계의 고득점 성취로 도달하게 되었는지, 구체적인 수치 상승 폭(예: 사전 ${evaluations[0]?.score || 60}점에서 사후 ${evaluations[evaluations.length - 1]?.score || 76}점으로 성장)을 정교하게 엮어서 콤팩트하게 핵심을 낭독하듯 서술하십시오.
+    4. 학생의 오답 문항 정보와 멘토 메모들을 완벽히 분석하되, 한 문장 한 문장을 군더더기 없이 고밀도로 압축해야 합니다.
 
     [JSON 형식 규격]
     {
-      "overallAnalysis": "사전 단계부터 최종 사후 단계까지 거쳐 간 학생의 인지적 성취도 발전 궤적, 학습 습관의 근본적인 고착화 과정 및 멘토링 태도 변화를 담은 총체적인 멘토 종합 소견 (공백 포함 250자 이상)",
-      "conceptAnalysis": "초반에 빈번하게 나타났던 특정 오개념들이 단계별 처방 교정을 받으면서 실질적으로 어떻게 원리에 도달하고 최종적으로 정답으로 수렴하게 되었는지를 증명하는 개념 교정 역사 분석 (공백 포함 250자 이상)",
-      "coachingPrescription": "지금까지의 멘토링 지도 중 가장 탁월한 성취 효과를 보였던 실전 지도법 노하우와 학생의 온전한 차후 유지를 위해 가정 및 앞으로의 연계 수업에서 부모님이 지속해주셔야 할 세부 밀착 처방전 (공백 포함 250자 이상)",
-      "actionPlan": "차기 학기 진도에서 성적을 공고히 유지하고 심화 문항을 정복하기 위해 학생이 즉각 생활 속에서 정례적으로 실천해야 하는 명확한 미션 3가지 (번호와 함께 한 단어가 아닌 구체적 행동 실천 세부 묘사를 줄바꿈 \\n 으로 분할하여 작성, 공백 포함 250자 이상)"
+      "overallAnalysis": "사전 단계부터 최종 사후 단계까지의 성취도 발전, 학습 습관 및 태도 변화를 담은 총체적인 핵심 소견 (딱 3문장 이내, 공백 포함 130자 수준 요약)",
+      "conceptAnalysis": "초반 취약 단원이 단계별 처방을 거치며 정답으로 완성되어 간 시계열 개념 교정 핵심 역사 분석 (딱 3문장 이내, 공백 포함 130자 수준 요약)",
+      "coachingPrescription": "지도 효과가 가장 컸던 핵심 노하우와 가정에서 연계해 지속해야 할 세부 밀착 처방전 (딱 3문장 이내, 공백 포함 130자 수준 요약)",
+      "actionPlan": "차기 학기 연계를 위해 학생이 즉시 실천해야 하는 명확한 미션 3가지 (번호와 함께 행동 지침을 줄바꿈 \\n 으로 분할하여 매우 짧고 강렬하게 요약)"
     }`;
 
     const prompt = `[3대 평가 통합 시계열 데이터]
@@ -512,13 +512,11 @@ app.post('/api/generate-outcome-report', async (req, res) => {
     - 3단계 종합 학업 이력:
     ${serializedEvals}`;
 
-    // ★ [핵심 디버그 패치]: Anthropic SDK 에러 원인이었던 response_format 제거. 
-    // Anthropic API 공식 규격에 따라 완벽한 JSON 포맷을 추출하도록 prompt와 max_tokens 사양만 전달합니다.
     const response = await anthropic.messages.create({
       model: 'claude-sonnet-4-6',
-      max_tokens: 4000,
+      max_tokens: 1500, // 불필요한 토큰 낭비 및 출력 장문화를 막기 위해 타이트하게 제한 설정
       system: systemInstruction,
-      messages: [{ role: 'user', content: prompt }]
+      messages: [{ role: 'user', content: prompt }],
     });
 
     const responseText = response.content[0].type === 'text' ? response.content[0].text : '';
@@ -531,7 +529,7 @@ app.post('/api/generate-outcome-report', async (req, res) => {
   }
 });
 
-// 6. GET /api/health - 헬스체크 엔드포인트
+// 6. GET /api/health - 헬스체크 엔드포인트 (100% 완전 복원)
 app.get('/api/health', (req, res) => {
   res.json({ 
     status: 'ok', 
@@ -541,7 +539,7 @@ app.get('/api/health', (req, res) => {
   });
 });
 
-// 7. GET /api/db-status - DB 실제 상태 확인용 디버그 엔드포인트
+// 7. GET /api/db-status - DB 실제 상태 확인용 디버그 엔드포인트 (100% 완전 복원)
 app.get('/api/db-status', async (req, res) => {
   if (!pool) {
     const maskedUrl = rawDbUrl ? rawDbUrl.replace(/:([^@]+)@/, ':****@') : '없음';
@@ -551,7 +549,7 @@ app.get('/api/db-status', async (req, res) => {
       isDbConfigured,
       rawDbUrlState: rawDbUrl ? `✅ 존재함 (길이: ${rawDbUrl.length})` : '❌ 없음',
       maskedUrl,
-      dbError: dbError || '알 수 없는 이유로 pool이 생성되지 않았습니다.',
+      dbError: dbError || '알 수 없는 이유로 풀이 생성되지 않았습니다.',
       inMemoryCount: inMemoryEvaluations.length,
       inMemoryStudents: inMemoryEvaluations.map(e => e.studentName)
     });
