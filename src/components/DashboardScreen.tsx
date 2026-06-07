@@ -114,14 +114,6 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   };
 
   if (showFinalReport && selectedStudent) {
-    const scores = [
-      { label: "사전", score: preScore || 0 },
-      { label: "중간", score: midScore || 0 },
-      { label: "사후", score: postScore || 0 }
-    ];
-
-    const hasMid = midScore !== null;
-
     return (
       <div className="report-workspace-container" style={{ minHeight: "auto", overflow: "visible", backgroundColor: "#f1f5f9", padding: "2rem 0" }}>
         {/* 우측 상단 플로팅 액션 바 */}
@@ -255,7 +247,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                     {preScore !== null && (
                       <path
                         d={
-                          hasMid && midScore !== null && postScore !== null
+                          midScore !== null && postScore !== null
                             ? `M 30 ${60 - preScore * 0.5} L 100 ${60 - midScore * 0.5} L 170 ${60 - postScore * 0.5}`
                             : `M 30 ${60 - preScore * 0.5} L 170 ${60 - (postScore ?? midScore ?? 0) * 0.5}`
                         }
@@ -268,7 +260,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                     {/* 사전 포인트 */}
                     {preScore !== null && (
                       <g>
-                        <circle cx="30" cy="60 - preScore * 0.5" r="2.5" fill="#fff" stroke="#1e3a8a" strokeWidth="1.5" />
+                        <circle cx="30" cy={60 - preScore * 0.5} r="2.5" fill="#fff" stroke="#1e3a8a" strokeWidth="1.5" />
                         <text x="30" y={52 - preScore * 0.5} fontSize="5" fill="#333" fontWeight="bold" textAnchor="middle">{preScore}점</text>
                         <text x="30" y="67" fontSize="5" fill="#64748b" textAnchor="middle">사전</text>
                       </g>
@@ -361,7 +353,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           페이지 경계 (인쇄 시 이 선을 기준으로 분할 인쇄됩니다)
         </div>
 
-        {/* ----------------- PAGE 2: Claude Sonnet 4.6 정성 분석 및 솔루션 (완벽한 1단 수직배열 변경 완료) ----------------- */}
+        {/* ----------------- PAGE 2: Claude Sonnet 4.6 정성 분석 및 솔루션 ----------------- */}
         <div className="report-a4-page" style={{ 
           width: "210mm",
           height: "296mm", 
@@ -419,7 +411,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                   </div>
                 </div>
 
-                {/* 2. 학습성장 핵심 오개념 교정 역사 (2단 분할을 철폐하고 시원한 1단 횡형으로 변경) */}
+                {/* 2. 학습성장 핵심 오개념 교정 역사 */}
                 <div className="coaching-card full-width" style={{ borderLeft: "4px solid #10b981", backgroundColor: "#fff", border: "1px solid #e2e8f0", borderLeftWidth: "4px", padding: "0.7rem 0.8rem", borderRadius: "6px", breakInside: "avoid" }}>
                   <div className="coaching-card-title" style={{ color: "#10b981", fontWeight: "bold", fontSize: "0.75rem", marginBottom: "0.25rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
                     🎯 학습성장 핵심 오개념 교정 역사
@@ -448,7 +440,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                   </div>
                 </div>
 
-                {/* 3. 추천 지도 노하우 및 가정 연계 지도법 (2단 분할을 철폐하고 시원한 1단 횡형으로 변경) */}
+                {/* 3. 추천 지도 노하우 및 가정 연계 지도법 */}
                 <div className="coaching-card full-width" style={{ borderLeft: "4px solid #3b82f6", backgroundColor: "#fff", border: "1px solid #e2e8f0", borderLeftWidth: "4px", padding: "0.7rem 0.8rem", borderRadius: "6px", breakInside: "avoid" }}>
                   <div className="coaching-card-title" style={{ color: "#3b82f6", fontWeight: "bold", fontSize: "0.75rem", marginBottom: "0.25rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
                     ✏ 추천 지도 노하우 및 가정 연계 지도법
