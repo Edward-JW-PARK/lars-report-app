@@ -1,4 +1,4 @@
-// server.cjs - 독립 Express API 서버 (Anthropic Claude 연동 - 원본 데이터 100% 복원 버전)
+// server.cjs - 독립 Express API 서버 (Anthropic Claude 연동 - 원본 데이터 100% 복원 및 고밀도 성과보고 엔진 통합 버전)
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
@@ -471,13 +471,18 @@ app.post('/api/generate-outcome-report', async (req, res) => {
 
     // 사전 -> 중간 -> 사후 순서대로 데이터셋 정교 정렬 및 직렬화
     const serializedEvals = evaluations.map((ev, index) => {
-      const correctCount = Object.values(ev.answers).filter(Boolean).length;
-      const totalScore = Math.round((correctCount / 25) * 100);
+      let wrongQuestionsText = "없음";
+      if (ev.wrongQuestions && ev.wrongQuestions.length > 0) {
+        wrongQuestionsText = ev.wrongQuestions.map(q => 
+          `- ${q.q_idx}번 문항: ${q.ch_name} 단원 (난이도 ${q.diff}) - 오개념 원인: ${q.misconception || '개념 부족'}`
+        ).join(', ');
+      }
+      
       return `[${index + 1}단계: ${ev.examType} 평가]
 - 평가 일자: ${ev.date}
 - 멘토 관찰 메모: ${ev.mentorNotes || '없음'}
-- 평가 점수: ${totalScore}점 (25문항 중 ${correctCount}개 정답)
-- 기존 단일 성취 코멘트: ${ev.aiResult?.overallAnalysis || '기록 없음'}`;
+- 평가 점수: ${ev.score}점
+- 오답 발생 문항들: ${wrongQuestionsText}`;
     }).join('\n\n');
 
     const gradeLabel = grade === 'middle_1' ? '중학교 1학년' : grade === 'middle_2' ? '중학교 2학년' : '중학교 3학년';
@@ -487,16 +492,17 @@ app.post('/api/generate-outcome-report', async (req, res) => {
     학생의 사전 -> 중간 -> 사후 평가 데이터를 기반으로 학부모 상담 및 최종 원격 포트폴리오용 '최종 성과 보고 의견'을 심도 있고 품격 넘치게 수립해 주십시오.
 
     [작성 요구 규칙 - 절대 준수]
-    1. 결코 짧은 요약 형태나 개별 단문으로 서술하지 마십시오. 학부모님이 상담을 통해 완전한 신뢰와 성취 변화를 직접 체감할 수 있도록 다정하고 논리 정연한 최고급 장문 경어체(~하였습니다, 권장합니다)로 작성하십시오.
+    1. 결코 짧은 요약 형태나 다른 단순 템플릿 문구로 서술하지 마십시오. 학부모님이 상담을 통해 완전한 신뢰와 성취 변화를 직접 체감할 수 있도록 다정하고 논리 정연한 최고급 장문 경어체(~하였습니다, 권장합니다)로 작성하십시오.
     2. 각 속성의 문자열은 최소 공백 포함 150자 ~ 300자 이상으로 문장들을 길고 밀도 높게 채우십시오.
-    3. 사전 단계의 약점이 어떻게 극복되고 사후 단계의 고득점 성취로 도달하게 되었는지, 구체적인 수치 상승 폭과 멘토의 티칭 내용을 상세히 엮어서 성장의 역사를 기술하십시오.
+    3. 사전 단계의 약점(특히 사전 단계에서의 많은 오답)이 어떻게 극복되고 사후 단계의 고득점 성취로 도달하게 되었는지, 구체적인 수치 상승 폭(예: 사전 ${evaluations[0]?.score || 60}점에서 사후 ${evaluations[evaluations.length - 1]?.score || 76}점으로 성장)과 멘토의 티칭 내용을 상세히 엮어서 성장의 역사를 기술하십시오.
+    4. 학생의 오답 문항 정보와 멘토 메모들을 철저히 읽어 반영하십시오.
 
     [JSON 형식 규격]
     {
       "overallAnalysis": "사전 단계부터 최종 사후 단계까지 거쳐 간 학생의 인지적 성취도 발전 궤적, 학습 습관의 근본적인 고착화 과정 및 멘토링 태도 변화를 담은 총체적인 멘토 종합 소견 (공백 포함 250자 이상)",
-      "conceptAnalysis": "초반에 빈번하게 나타났던 특정 오개념(예: 곱셈공식 변형, 식의 치환, 기하 원리 오독 등)들이 단계별 처방 교정을 받으면서 실질적으로 어떻게 원리에 도달하고 최종적으로 정답으로 수렴하게 되었는지를 증명하는 개념 교정 역사 분석",
-      "coachingPrescription": "지금까지의 멘토링 지도 중 가장 탁월한 성취 효과를 보였던 실전 지도법 노하우와 학생의 온전한 차후 유지를 위해 가정 및 앞으로의 연계 수업에서 부모님이 지속해주셔야 할 세부 밀착 처방전",
-      "actionPlan": "차기 학기 진도에서 성적을 공고히 유지하고 심화 문항을 정복하기 위해 학생이 즉각 생활 속에서 정례적으로 실천해야 하는 명확한 미션 3가지 (번호와 함께 한 단어가 아닌 구체적 행동 실천 세부 묘사를 줄바꿈 \\n 으로 분할하여 작성)"
+      "conceptAnalysis": "초반에 빈번하게 나타났던 특정 오개념들이 단계별 처방 교정을 받으면서 실질적으로 어떻게 원리에 도달하고 최종적으로 정답으로 수렴하게 되었는지를 증명하는 개념 교정 역사 분석 (공백 포함 250자 이상)",
+      "coachingPrescription": "지금까지의 멘토링 지도 중 가장 탁월한 성취 효과를 보였던 실전 지도법 노하우와 학생의 온전한 차후 유지를 위해 가정 및 앞으로의 연계 수업에서 부모님이 지속해주셔야 할 세부 밀착 처방전 (공백 포함 250자 이상)",
+      "actionPlan": "차기 학기 진도에서 성적을 공고히 유지하고 심화 문항을 정복하기 위해 학생이 즉각 생활 속에서 정례적으로 실천해야 하는 명확한 미션 3가지 (번호와 함께 한 단어가 아닌 구체적 행동 실천 세부 묘사를 줄바꿈 \\n 으로 분할하여 작성, 공백 포함 250자 이상)"
     }`;
 
     const prompt = `[3대 평가 통합 시계열 데이터]

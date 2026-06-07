@@ -6,6 +6,8 @@ import { ReportView } from "./components/ReportView";
 import { OutcomeReportView } from "./components/OutcomeReportView"; // 신설할 최종 성과보고서 전용 컴포넌트
 import { BookOpen, Sparkles } from "lucide-react";
 import { MATH_BLUEPRINT, ENGLISH_BLUEPRINT } from "./data/blueprintMetadata";
+import { calculateReportStats } from "./utils/reportGenerator";
+
 
 export interface Evaluation {
   id: string;
@@ -161,7 +163,12 @@ export const App: React.FC = () => {
   };
 
   // ★ [해결의 핵심] 우측 "성과보고서 발행" 버튼 전용: 3대 평가 역추적 시계열 종합분석 생성 함수
-  const handleGenerateFinalOutcome = async (studentName: string, grade: "middle_1" | "middle_2" | "middle_3", subject: "math" | "english") => {
+  const handleGenerateFinalOutcome = async (
+    studentName: string, 
+    grade: "middle_1" | "middle_2" | "middle_3", 
+    subject: "math" | "english"
+  ) => {
+    // 1. 해당 학생의 모든 평가 데이터를 사전 -> 중간 -> 사후 순으로 정렬 수집
     const studentEvals = evaluations
       .filter(e => e.studentName === studentName && e.grade === grade && e.subject === subject)
       .sort((a, b) => {
@@ -176,11 +183,13 @@ export const App: React.FC = () => {
 
     setSelectedStudentMeta({ name: studentName, grade, subject });
     
-    // 만약 이미 최종 성과 분석(aiResult)을 받아둔 최신 평가(예: 사후 혹은 중간)가 있다면, API 요청을 생략하고 전용 뷰로 즉시 진입
-    const latestEvalWithAi = [...studentEvals].reverse().find(e => e.aiResult && e.aiResult.overallAnalysis && e.aiResult.overallAnalysis.length > 100);
+    // [버그 수정]: 기존 단일 회차 요약 데이터가 있더라도, "최종 종합 성과보고(isOutcomeReport)" 분석이 완료된 데이터가 아니라면 생략 가드를 우회하고 강제로 새로 분석합니다.
+    const latestEvalWithOutcomeAi = [...studentEvals].reverse().find(
+      e => e.aiResult && e.aiResult.isOutcomeReport && e.aiResult.overallAnalysis && e.aiResult.overallAnalysis.length > 100
+    );
     
-    if (latestEvalWithAi) {
-      setFinalOutcomeResult(latestEvalWithAi.aiResult);
+    if (latestEvalWithOutcomeAi) {
+      setFinalOutcomeResult(latestEvalWithOutcomeAi.aiResult);
       setCurrentScreen("outcome");
       return;
     }
@@ -188,6 +197,7 @@ export const App: React.FC = () => {
     setIsGeneratingAI(true);
 
     try {
+      // 2. 백엔드에 3개 회차의 정량 누적 데이터와 멘토 코칭 메모를 담아 전송
       const response = await fetch("/api/generate-outcome-report", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -195,20 +205,45 @@ export const App: React.FC = () => {
           studentName,
           grade,
           subject,
-          evaluations: studentEvals
+          isOutcomeReport: true, // 시계열 종합 보고 마커 삽입
+evaluations: studentEvals.map(e => {
+  const stats = calculateReportStats(e.grade, e.subject, e.answers);
+  return {
+    examType: e.examType,
+    score: stats.score,
+    // q 옆에 : any 추가 적용 완료
+    wrongQuestions: stats.detailedResults.filter((q: any) => !q.isCorrect).map((q: any) => ({
+      q_idx: q.q_idx,
+      ch_name: q.ch_name,
+      diff: q.diff,
+      std_desc: q.std_desc,
+      intent: q.intent,
+      misconception: q.misconception
+    })),
+    mentorNotes: e.mentorNotes || "기록된 멘토 관찰 피드백이 없습니다.",
+    date: e.date
+  };
+})
         }),
       });
 
       if (!response.ok) {
-        throw new Error("종합 최종 성과분석에 실패했습니다.");
+        throw new Error("종합 최종 성과분석 AI 엔진 호출에 실패했습니다.");
       }
 
       const finalOutcomeData = await response.json();
-      setFinalOutcomeResult(finalOutcomeData);
+      
+      // 결과 객체에 최종 성과 마커 강제 주입
+      const enrichedOutcomeData = {
+        ...finalOutcomeData,
+        isOutcomeReport: true
+      };
 
-      // 분석 보고서 결과를 사후(혹은 가장 최신) 평가의 DB 필드에 업데이트하여 영구 보존
+      setFinalOutcomeResult(enrichedOutcomeData);
+
+      // 3. 분석 보고서 결과를 사후(혹은 가장 최신) 평가의 DB 필드에 업데이트하여 영구 보존
       const latestEval = studentEvals[studentEvals.length - 1];
-      const updatedEval = { ...latestEval, aiResult: finalOutcomeData };
+      const updatedEval = { ...latestEval, aiResult: enrichedOutcomeData };
 
       await fetch(`/api/evaluations/${latestEval.id}`, {
         method: "PUT",
@@ -228,6 +263,10 @@ export const App: React.FC = () => {
       setIsGeneratingAI(false);
     }
   };
+
+
+
+
 
   const handleSaveEvaluation = async (data: {
     studentName: string;
