@@ -1,6 +1,6 @@
 // src/components/DashboardScreen.tsx
 import React, { useState } from "react";
-import { Plus, Eye, Edit2, Trash2, TrendingUp, Award, FileText, Printer } from "lucide-react";
+import { Plus, Eye, Edit2, Trash2, TrendingUp, Award, FileText, Printer, Sparkles } from "lucide-react";
 import { calculateReportStats } from "../utils/reportGenerator";
 
 export interface Evaluation {
@@ -42,10 +42,10 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   const [selectedStudent, setSelectedStudent] = useState<string>("");
   const [showFinalReport, setShowFinalReport] = useState(false);
 
-  // Get unique list of students
+  // 고유 학생 목록 추출
   const students = Array.from(new Set(evaluations.map((e) => e.studentName)));
 
-  // If a student is selected, find all their evaluations
+  // 선택된 학생의 평가 이력을 회차순으로 정렬
   const studentEvals = evaluations
     .filter((e) => e.studentName === selectedStudent)
     .sort((a, b) => {
@@ -66,7 +66,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     return s === "math" ? "수학" : "영어";
   };
 
-  // Calculate student growth metrics
+  // 사전, 중간, 사후 평가 인스턴스 검색
   const preEval = studentEvals.find((e) => e.examType === "사전");
   const midEval = studentEvals.find((e) => e.examType === "중간");
   const postEval = studentEvals.find((e) => e.examType === "사후");
@@ -82,24 +82,21 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     growth = midScore - preScore;
   }
 
-  // 최종 성과 보고서 저장을 위한 최적의 평가 타겟 검색 (사후 -> 중간 -> 사전 순)
-  const latestEvalForOutcome = postEval || midEval || preEval;
-  // 해당 평가의 aiResult에 최종 성과보고서 시그니처가 들어가 있는지 판별
-  const outcomeAI = latestEvalForOutcome?.aiResult?.isOutcomeReport ? latestEvalForOutcome.aiResult : null;
+  // AI 최종 리포트 결과 바인딩용 타겟 검색 (우선순위: 사후 -> 중간 -> 사전)
+  const latestEval = postEval || midEval || preEval;
+  
+  // 데이터 동기화를 위해 aiResult 구조를 면밀히 파악 및 바인딩
+  const aiReportData = latestEval?.aiResult || {};
+  const hasValidAI = !!(aiReportData.overallAnalysis && aiReportData.overallAnalysis.trim());
 
-  // [성과보고서 발행] 버튼 클릭 핸들러 (자동 AI 기동 적용)
+  // [성과보고서 발행] 클릭 시 AI 리포트 누락 방지 가드 가동
   const handleLaunchOutcomeReport = async () => {
     setShowFinalReport(true);
-    // 아직 분석 데이터가 생성되지 않았다면 백엔드에 즉시 고밀도 분석 요청 트리거
-    if (!outcomeAI && onGenerateFinalOutcome && latestEvalForOutcome) {
+    if (!hasValidAI && onGenerateFinalOutcome && latestEval) {
       try {
-        await onGenerateFinalOutcome(
-          latestEvalForOutcome.studentName,
-          latestEvalForOutcome.grade,
-          latestEvalForOutcome.subject
-        );
-      } catch (error) {
-        console.error("최종 AI 성과보고 분석 중 오류가 발생했습니다:", error);
+        await onGenerateFinalOutcome(latestEval.studentName, latestEval.grade, latestEval.subject);
+      } catch (err) {
+        console.error("AI 성과보고 생성 에러:", err);
       }
     }
   };
@@ -118,22 +115,20 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     }, 50);
   };
 
-  // Printable Final Report Component (A4 2페이지 인쇄 보장 + 입체적 SVG 성장 그래프 포함 버전)
+  // ==============================================================
+  // 4. 고품격 아카데믹 2페이지 리포트 마크업 뷰 (이전 고가치 테마 복원)
+  // ==============================================================
   if (showFinalReport && selectedStudent) {
-    // 실시간 성적 수치 기반 SVG 그래프 좌표 계산
     const scores = [
-      { label: "사전", score: preScore || 0, date: preEval?.date || "" },
-      { label: "중간", score: midScore || 0, date: midEval?.date || "" },
-      { label: "사후", score: postScore || 0, date: postEval?.date || "" }
+      { label: "사전", score: preScore || 0 },
+      { label: "중간", score: midScore || 0 },
+      { label: "사후", score: postScore || 0 }
     ];
 
     const paddingX = 60;
     const chartWidth = 380;
-    
     const getX = (idx: number) => paddingX + (chartWidth / 2) * idx;
-    const getY = (score: number) => {
-      return 110 - (score * 1);
-    };
+    const getY = (score: number) => 110 - (score * 1);
 
     const hasMid = midScore !== null;
     const pointsPath = hasMid 
@@ -142,21 +137,20 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
     return (
       <div className="report-workspace-container" style={{ minHeight: "auto", overflow: "visible", backgroundColor: "#f1f5f9", padding: "2rem 0" }}>
-        {/* 액션 컨트롤 툴바 (인쇄 시 자동 숨김) */}
+        {/* 우측 상단 플로팅 액션 바 (인쇄 시 자동 제외) */}
         <div className="workspace-actions-floating" style={{ position: "fixed", top: "20px", right: "20px", zIndex: 1000, display: "flex", gap: "0.5rem" }}>
           <button className="btn btn-secondary" onClick={() => setShowFinalReport(false)} style={{ boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }}>
             대시보드로 돌아가기
           </button>
           
-          {/* AI 리포트 강제 재생성/갱신 기능 바인딩 */}
-          {onGenerateFinalOutcome && latestEvalForOutcome && (
+          {onGenerateFinalOutcome && latestEval && (
             <button 
               className="btn btn-warning" 
-              onClick={() => onGenerateFinalOutcome(latestEvalForOutcome.studentName, latestEvalForOutcome.grade, latestEvalForOutcome.subject)} 
+              onClick={() => onGenerateFinalOutcome(latestEval.studentName, latestEval.grade, latestEval.subject)}
               disabled={isGeneratingAI}
-              style={{ backgroundColor: "#d97706", borderColor: "#d97706", color: "white", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }}
+              style={{ backgroundColor: "#d97706", borderColor: "#d97706", color: "white", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)", display: "flex", alignItems: "center", gap: "0.3rem" }}
             >
-              ✨ {isGeneratingAI ? "AI 분석 생성 중..." : "AI 최종 분석 생성/갱신"}
+              <Sparkles size={14} /> {isGeneratingAI ? "AI 분석 생성 중..." : "AI 성과 정밀 분석"}
             </button>
           )}
 
@@ -165,7 +159,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           </button>
         </div>
 
-        {/* OUTCOME PAGE 1: 1페이지 */}
+        {/* ----------------- PAGE 1: 정량적 통계 및 그래프 페이지 ----------------- */}
         <div className="report-a4-page" style={{ 
           pageBreakAfter: "always", 
           breakAfter: "page", 
@@ -188,6 +182,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
               프로젝트 기간 동안 일어난 학생의 학업 성취 변화 및 종합적인 코칭 성과를 요약 보고합니다.
             </div>
 
+            {/* 학생 메타 인포 테이블 */}
             <div className="report-student-meta" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.75rem", marginTop: "1.5rem" }}>
               <div className="meta-box" style={{ border: "1px solid #e5e7eb", borderRadius: "6px", padding: "0.5rem 0.75rem", display: "flex", flexDirection: "column", gap: "0.15rem" }}>
                 <span className="meta-box-label" style={{ fontSize: "0.7rem", color: "#6b7280", fontWeight: "600" }}>학생명</span>
@@ -196,7 +191,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
               <div className="meta-box" style={{ border: "1px solid #e5e7eb", borderRadius: "6px", padding: "0.5rem 0.75rem", display: "flex", flexDirection: "column", gap: "0.15rem" }}>
                 <span className="meta-box-label" style={{ fontSize: "0.7rem", color: "#6b7280", fontWeight: "600" }}>과목 / 학년</span>
                 <span className="meta-box-value" style={{ fontSize: "0.95rem", fontWeight: "bold", color: "#111827" }}>
-                  {studentEvals[0] ? `${getSubjectLabel(studentEvals[0].subject)} / ${getGradeLabel(studentEvals[0].grade)}` : "-"}
+                  {latestEval ? `${getSubjectLabel(latestEval.subject)} / ${getGradeLabel(latestEval.grade)}` : "-"}
                 </span>
               </div>
               <div className="meta-box" style={{ border: "1px solid #e5e7eb", borderRadius: "6px", padding: "0.5rem 0.75rem", display: "flex", flexDirection: "column", gap: "0.15rem" }}>
@@ -212,6 +207,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
             </div>
           </div>
 
+          {/* Section 1: 성적 향상 흐름 시각화 */}
           <div className="report-section" style={{ breakInside: "avoid", marginBottom: "1.5rem" }}>
             <div className="section-title-container" style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.85rem" }}>
               <span className="section-num" style={{ backgroundColor: "#1e3a8a", color: "#fff", width: "1.5rem", height: "1.5rem", borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.8rem" }}>1</span>
@@ -236,7 +232,8 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
               </div>
             </div>
 
-            <div style={{ backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "1rem", marginBottom: "1rem", position: "relative" }}>
+            {/* SVG 라인 차트 */}
+            <div style={{ backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "1.2rem", marginBottom: "1rem", position: "relative" }}>
               <div style={{ position: "absolute", top: "8px", left: "12px", fontSize: "0.65rem", color: "#94a3b8", fontWeight: 600 }}>성장 지표 트렌드 (Trend Graph)</div>
               <svg width="100%" height="120" viewBox="0 0 500 120" style={{ overflow: "visible" }}>
                 <line x1="40" y1="110" x2="460" y2="110" stroke="#e2e8f0" strokeDasharray="3,3" />
@@ -272,13 +269,14 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                   학습 성과 핵심 지표 분석
                 </h4>
                 <p style={{ fontSize: "0.78rem", color: "#4b5563", lineHeight: 1.4, margin: 0 }}>
-                  {selectedStudent} 학생은 사전 평가 대비 사후 평가에서 <strong>{growth}점 향상</strong>된 우수한 학업 성취 성장을 기록했습니다. 
-                  기본 연산 오류가 명확하게 감소하였고, 실시간 피드백을 통해 주요 오개념을 자가 교정할 수 있는 자기주도적 성장이 정량적으로 증명되었습니다.
+                  {selectedStudent} 학생은 사전 평가 대비 최종 사후 평가에서 총 <strong>{growth}점의 성과 향상</strong>을 달성해 냈습니다.
+                  체계적인 훈련과 반복적인 피드백 구조를 통하여, 오개념 영역의 복원이 가시적으로 수행되었음이 성취 지표 데이터를 통하여 객관적으로 입증됩니다.
                 </p>
               </div>
             </div>
           </div>
 
+          {/* Section 2: 회차별 문항 분석 일람표 */}
           <div className="report-section" style={{ marginBottom: "0", breakInside: "avoid" }}>
             <div className="section-title-container" style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.85rem" }}>
               <span className="section-num" style={{ backgroundColor: "#1e3a8a", color: "#fff", width: "1.5rem", height: "1.5rem", borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.8rem" }}>2</span>
@@ -329,7 +327,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           페이지 경계 (인쇄 시 이 선을 기준으로 분할 인쇄됩니다)
         </div>
 
-        {/* OUTCOME PAGE 2: 2페이지 */}
+        {/* ----------------- PAGE 2: Claude AI 정성 분석 및 솔루션 ----------------- */}
         <div className="report-a4-page" style={{ 
           height: "296mm", 
           boxSizing: "border-box", 
@@ -349,60 +347,78 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           <div className="report-section" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
             <div className="section-title-container" style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1.2rem" }}>
               <span className="section-num" style={{ backgroundColor: "#1e3a8a", color: "#fff", width: "1.5rem", height: "1.5rem", borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.8rem" }}>3</span>
-              <span className="section-title" style={{ fontSize: "1rem", fontWeight: "bold", color: "#1e3a8a" }}>멘토링 최종 성과 요약 의견</span>
+              <span className="section-title" style={{ fontSize: "1rem", fontWeight: "bold", color: "#1e3a8a" }}>SGS Learnway 최종 종합 분석 및 멘토 피드백</span>
             </div>
             
             <div className="coaching-box-container" style={{ display: "flex", flexDirection: "column", gap: "1.5rem" }}>
-              {/* 지도 소견 */}
+              {/* 1. 지도 소견 카드 */}
               <div className="coaching-card full-width" style={{ borderLeft: "4px solid #b28a50", backgroundColor: "#fff", border: "1px solid #e2e8f0", borderLeftWidth: "4px", padding: "1rem", borderRadius: "6px", breakInside: "avoid" }}>
                 <div className="coaching-card-title" style={{ color: "#b28a50", fontWeight: "bold", fontSize: "0.85rem", marginBottom: "0.4rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                  💡 멘토 종합 지도 소견 및 관찰 변화
+                  💡 멘토 종합 지도 소견 및 관찰 변화 (장문 분석)
                 </div>
                 <div className="coaching-card-body" style={{ fontSize: "0.78rem", color: "#334155", lineHeight: 1.6 }}>
                   {isGeneratingAI ? (
                     <div style={{ color: "#b28a50", fontWeight: "600" }} className="animate-pulse">
-                      Claude AI가 사전/중간/사후 데이터를 분석하여 고품격 학부모 소견을 작성하고 있습니다... (약 5~10초 소요)
+                      Claude 3.5 Sonnet이 사전/중간/사후 성취도 데이터를 대조 분석하여 상담용 종합 소견을 기술 중입니다... (약 10초 내외 소요)
                     </div>
-                  ) : outcomeAI?.overallAnalysis ? (
-                    outcomeAI.overallAnalysis
+                  ) : aiReportData.overallAnalysis ? (
+                    aiReportData.overallAnalysis
                   ) : (
-                    "프로젝트 시작 시점의 취약점을 보완하기 위해 멘토가 학생과 집중적으로 개념 훈련 및 오답 점검을 진행하였습니다. 학생의 전반적인 개념 적용률과 문제 해결 태도가 매우 긍정적으로 개선되었습니다."
+                    "사전 분석 데이터를 찾을 수 없습니다. 우측 상단의 [AI 성과 정밀 분석] 버튼을 클릭해 소견서 생성을 활성화해 주십시오."
                   )}
                 </div>
               </div>
 
-              {/* 학습성장 분야 */}
+              {/* 2. 학습성장 핵심 오개념 교정 역사 */}
               <div className="coaching-card full-width" style={{ borderLeft: "4px solid #10b981", backgroundColor: "#fff", border: "1px solid #e2e8f0", borderLeftWidth: "4px", padding: "1rem", borderRadius: "6px", breakInside: "avoid" }}>
                 <div className="coaching-card-title" style={{ color: "#10b981", fontWeight: "bold", fontSize: "0.85rem", marginBottom: "0.4rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                  🎯 학습성장 핵심 분야
+                  🎯 학습성장 핵심 오개념 교정 역사
                 </div>
                 <div className="coaching-card-body" style={{ fontSize: "0.78rem", color: "#334155", lineHeight: 1.6 }}>
                   {isGeneratingAI ? (
                     <div style={{ color: "#10b981", fontWeight: "600" }} className="animate-pulse">
-                      누적 학습 데이터를 정밀 진단하고 있습니다...
+                      누적 정량 통계를 바탕으로 시계열 흐름을 복원하고 있습니다...
                     </div>
-                  ) : outcomeAI?.conceptAnalysis ? (
-                    outcomeAI.conceptAnalysis
+                  ) : aiReportData.conceptAnalysis ? (
+                    aiReportData.conceptAnalysis
                   ) : (
-                    "사전 평가에서 빈번하게 오답이 발생했던 단원의 기초 성취기준 도달률이 평균 40% 이상 크게 상승하였습니다. 주요 오개념을 실시간 밀착 피드백을 통해 교정하여 유사 유형의 연계 문항 정답률이 대폭 올라갔습니다."
+                    "성과 분석 결과를 기다리고 있습니다. 실시간 생성 처리가 완료되면 이 항목에 피드백이 정교하게 채워집니다."
                   )}
                 </div>
               </div>
 
-              {/* 연계 제안 */}
+              {/* 3. 추천 지도 노하우 및 가정 동독 지도법 */}
+              <div className="coaching-card full-width" style={{ borderLeft: "4px solid #3b82f6", backgroundColor: "#fff", border: "1px solid #e2e8f0", borderLeftWidth: "4px", padding: "1rem", borderRadius: "6px", breakInside: "avoid" }}>
+                <div className="coaching-card-title" style={{ color: "#3b82f6", fontWeight: "bold", fontSize: "0.85rem", marginBottom: "0.4rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                  ✏ 추천 지도 노하우 및 가정 동독 지도법
+                </div>
+                <div className="coaching-card-body" style={{ fontSize: "0.78rem", color: "#334155", lineHeight: 1.6 }}>
+                  {isGeneratingAI ? (
+                    <div style={{ color: "#3b82f6", fontWeight: "600" }} className="animate-pulse">
+                      가정과 교실이 연계된 맞춤형 티칭 솔루션을 정식 컴파일하고 있습니다...
+                    </div>
+                  ) : aiReportData.coachingPrescription ? (
+                    aiReportData.coachingPrescription
+                  ) : (
+                    "가정 학습 및 연계 피드백 연계 지도 설계 가이드가 준비 중입니다."
+                  )}
+                </div>
+              </div>
+
+              {/* 4. 실천 액션 플랜 */}
               <div className="coaching-card full-width" style={{ borderLeft: "4px solid #ef4444", backgroundColor: "#fff", border: "1px solid #e2e8f0", borderLeftWidth: "4px", padding: "1rem", borderRadius: "6px", breakInside: "avoid" }}>
                 <div className="coaching-card-title" style={{ color: "#ef4444", fontWeight: "bold", fontSize: "0.85rem", marginBottom: "0.4rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                  🔥 추후 연계 학습 제안
+                  🔥 차기 학기 상급 연계를 위한 핵심 실천 액션 플랜
                 </div>
                 <div className="coaching-card-body" style={{ fontSize: "0.78rem", color: "#334155", lineHeight: 1.6 }}>
                   {isGeneratingAI ? (
                     <div style={{ color: "#ef4444", fontWeight: "600" }} className="animate-pulse">
-                      향후 로드맵을 설계하고 있습니다...
+                      차기 학습 전략 목표 로드맵을 구성하는 중입니다...
                     </div>
-                  ) : outcomeAI?.coachingPrescription ? (
-                    outcomeAI.coachingPrescription
+                  ) : aiReportData.actionPlan ? (
+                    aiReportData.actionPlan
                   ) : (
-                    "성장률은 매우 우수하나, 심화형 추론 문항에서는 여전히 유형에 따른 혼란 양상을 보입니다. 성공적인 차기 학습 흐름을 위해 심화 유형 3개 이상 집중 적용 훈련 및 역순 추론 오답 역추적 학습법을 지속할 것을 강력히 권장합니다."
+                    "지속 발전을 보장하기 위한 액션 플랜 가이드 항목입니다."
                   )}
                 </div>
               </div>
@@ -418,6 +434,9 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     );
   }
 
+  // ==============================================================
+  // 5. 기본 대시보드 리스트 마크업 뷰 (원형 보존)
+  // ==============================================================
   return (
     <div className="dashboard-grid">
       <div className="card">
