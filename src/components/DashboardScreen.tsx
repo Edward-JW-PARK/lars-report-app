@@ -16,30 +16,28 @@ export interface Evaluation {
   aiResult?: any;
 }
 
-// 수정 후 (이렇게 변경)
 interface DashboardScreenProps {
   evaluations: Evaluation[];
   onAddNew: () => void;
   onView: (id: string) => void;
   onEdit: (id: string) => void;
-  onDelete: (id: string) => Promise<void> | void; // Promise 호환 가능하게 변경
-  isGeneratingAI: boolean; // 추가된 속성 반영
+  onDelete: (id: string) => Promise<void> | void;
+  isGeneratingAI: boolean;
   onGenerateFinalOutcome?: (
     studentName: string,
     grade: "middle_1" | "middle_2" | "middle_3",
     subject: "math" | "english"
-  ) => Promise<void>; // 추가된 콜백 함수 속성 반영
+  ) => Promise<void>;
 }
 
-
-// 수정 후 (이렇게 변경)
 export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   evaluations,
   onAddNew,
   onView,
   onEdit,
   onDelete,
-  // 여기에 있던 isGeneratingAI와 onGenerateFinalOutcome를 완전히 제거합니다.
+  isGeneratingAI,
+  onGenerateFinalOutcome,
 }) => {
   const [selectedStudent, setSelectedStudent] = useState<string>("");
   const [showFinalReport, setShowFinalReport] = useState(false);
@@ -84,24 +82,41 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     growth = midScore - preScore;
   }
 
-// 1. handlePrintFinalReport 함수 업그레이드 (기존 대시보드 내부 함수 대체)
-const handlePrintFinalReport = () => {
-  // 브라우저 인쇄 엔진이 높이를 제대로 인식할 수 있도록 임시 가드 적용
-  const originalOverflow = document.body.style.overflow;
-  const originalHeight = document.body.style.height;
-  
-  document.body.style.overflow = "visible";
-  document.body.style.height = "auto";
-  
-  // 렌더링 동기화를 위한 미세 지연 후 인쇄 창 트리거
-  setTimeout(() => {
-    window.print();
-    // 인쇄 완료 후 원래 스타일로 안전 복구
-    document.body.style.overflow = originalOverflow;
-    document.body.style.height = originalHeight;
-  }, 50);
-};
+  // 최종 성과 보고서 저장을 위한 최적의 평가 타겟 검색 (사후 -> 중간 -> 사전 순)
+  const latestEvalForOutcome = postEval || midEval || preEval;
+  // 해당 평가의 aiResult에 최종 성과보고서 시그니처가 들어가 있는지 판별
+  const outcomeAI = latestEvalForOutcome?.aiResult?.isOutcomeReport ? latestEvalForOutcome.aiResult : null;
 
+  // [성과보고서 발행] 버튼 클릭 핸들러 (자동 AI 기동 적용)
+  const handleLaunchOutcomeReport = async () => {
+    setShowFinalReport(true);
+    // 아직 분석 데이터가 생성되지 않았다면 백엔드에 즉시 고밀도 분석 요청 트리거
+    if (!outcomeAI && onGenerateFinalOutcome && latestEvalForOutcome) {
+      try {
+        await onGenerateFinalOutcome(
+          latestEvalForOutcome.studentName,
+          latestEvalForOutcome.grade,
+          latestEvalForOutcome.subject
+        );
+      } catch (error) {
+        console.error("최종 AI 성과보고 분석 중 오류가 발생했습니다:", error);
+      }
+    }
+  };
+
+  const handlePrintFinalReport = () => {
+    const originalOverflow = document.body.style.overflow;
+    const originalHeight = document.body.style.height;
+    
+    document.body.style.overflow = "visible";
+    document.body.style.height = "auto";
+    
+    setTimeout(() => {
+      window.print();
+      document.body.style.overflow = originalOverflow;
+      document.body.style.height = originalHeight;
+    }, 50);
+  };
 
   // Printable Final Report Component (A4 2페이지 인쇄 보장 + 입체적 SVG 성장 그래프 포함 버전)
   if (showFinalReport && selectedStudent) {
@@ -112,13 +127,11 @@ const handlePrintFinalReport = () => {
       { label: "사후", score: postScore || 0, date: postEval?.date || "" }
     ];
 
-    // SVG 차트 좌표 설정 (가로 500, 세로 120 기준)
     const paddingX = 60;
     const chartWidth = 380;
     
     const getX = (idx: number) => paddingX + (chartWidth / 2) * idx;
     const getY = (score: number) => {
-      // 0점~100점을 Y축 110~10 영역으로 환산
       return 110 - (score * 1);
     };
 
@@ -134,14 +147,25 @@ const handlePrintFinalReport = () => {
           <button className="btn btn-secondary" onClick={() => setShowFinalReport(false)} style={{ boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }}>
             대시보드로 돌아가기
           </button>
+          
+          {/* AI 리포트 강제 재생성/갱신 기능 바인딩 */}
+          {onGenerateFinalOutcome && latestEvalForOutcome && (
+            <button 
+              className="btn btn-warning" 
+              onClick={() => onGenerateFinalOutcome(latestEvalForOutcome.studentName, latestEvalForOutcome.grade, latestEvalForOutcome.subject)} 
+              disabled={isGeneratingAI}
+              style={{ backgroundColor: "#d97706", borderColor: "#d97706", color: "white", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }}
+            >
+              ✨ {isGeneratingAI ? "AI 분석 생성 중..." : "AI 최종 분석 생성/갱신"}
+            </button>
+          )}
+
           <button className="btn btn-primary" onClick={handlePrintFinalReport} style={{ backgroundColor: "#1e3a8a", borderColor: "#1e3a8a", boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }}>
             <Printer size={16} /> 보고서 인쇄 및 PDF 저장
           </button>
         </div>
 
-        {/* ============================================================== */}
-        {/* OUTCOME PAGE 1: 1페이지 (성장 곡선 및 정량적 추이 대조)          */}
-        {/* ============================================================== */}
+        {/* OUTCOME PAGE 1: 1페이지 */}
         <div className="report-a4-page" style={{ 
           pageBreakAfter: "always", 
           breakAfter: "page", 
@@ -153,7 +177,6 @@ const handlePrintFinalReport = () => {
           display: "flex",
           flexDirection: "column"
         }}>
-          {/* 아카데믹 스타일 상단 더블 보더 헤더 */}
           <div className="report-header" style={{ borderBottom: "4px double #1e3a8a", paddingBottom: "1.2rem", marginBottom: "1.5rem" }}>
             <div className="report-title-badge" style={{ display: "inline-block", backgroundColor: "#1e3a8a", color: "#ffffff", padding: "0.25rem 0.75rem", fontSize: "0.7rem", fontWeight: "bold", letterSpacing: "1px", borderRadius: "3px", marginBottom: "0.5rem" }}>
               LEARNWAY SCHOOL MENTORING OUTCOME REPORT
@@ -165,7 +188,6 @@ const handlePrintFinalReport = () => {
               프로젝트 기간 동안 일어난 학생의 학업 성취 변화 및 종합적인 코칭 성과를 요약 보고합니다.
             </div>
 
-            {/* 메타 인디케이터 그리드 */}
             <div className="report-student-meta" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.75rem", marginTop: "1.5rem" }}>
               <div className="meta-box" style={{ border: "1px solid #e5e7eb", borderRadius: "6px", padding: "0.5rem 0.75rem", display: "flex", flexDirection: "column", gap: "0.15rem" }}>
                 <span className="meta-box-label" style={{ fontSize: "0.7rem", color: "#6b7280", fontWeight: "600" }}>학생명</span>
@@ -190,7 +212,6 @@ const handlePrintFinalReport = () => {
             </div>
           </div>
 
-          {/* Section 1: 성적 향상 시각화 및 입체 성장 곡선 */}
           <div className="report-section" style={{ breakInside: "avoid", marginBottom: "1.5rem" }}>
             <div className="section-title-container" style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.85rem" }}>
               <span className="section-num" style={{ backgroundColor: "#1e3a8a", color: "#fff", width: "1.5rem", height: "1.5rem", borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.8rem" }}>1</span>
@@ -215,16 +236,9 @@ const handlePrintFinalReport = () => {
               </div>
             </div>
 
-            {/* 고해상도 인라인 SVG 성장선 곡선 그래프 */}
             <div style={{ backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "1rem", marginBottom: "1rem", position: "relative" }}>
               <div style={{ position: "absolute", top: "8px", left: "12px", fontSize: "0.65rem", color: "#94a3b8", fontWeight: 600 }}>성장 지표 트렌드 (Trend Graph)</div>
-              <svg 
-  width="100%" 
-  height="100%" 
-  viewBox="0 0 500 200" // 500:200 비율의 고유 좌표 공간 선언 (숫자만 작성!)
-  preserveAspectRatio="none" // 왜곡 없이 채우기 위해 설정 가능
->
-                {/* 수평 가이드 라인 (0점, 50점, 100점) */}
+              <svg width="100%" height="120" viewBox="0 0 500 120" style={{ overflow: "visible" }}>
                 <line x1="40" y1="110" x2="460" y2="110" stroke="#e2e8f0" strokeDasharray="3,3" />
                 <line x1="40" y1="60" x2="460" y2="60" stroke="#e2e8f0" strokeDasharray="3,3" />
                 <line x1="40" y1="10" x2="460" y2="10" stroke="#e2e8f0" strokeDasharray="3,3" />
@@ -233,10 +247,8 @@ const handlePrintFinalReport = () => {
                 <text x="15" y="63" fontSize="8" fill="#94a3b8" fontWeight="bold">50</text>
                 <text x="15" y="13" fontSize="8" fill="#94a3b8" fontWeight="bold">100</text>
 
-                {/* 성적 추이 그래프 선 */}
                 <path d={pointsPath} fill="none" stroke="#1e3a8a" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" />
                 
-                {/* 각 구간 포인트 노드 데이터 마킹 */}
                 {scores.map((s, idx) => {
                   if (idx === 1 && !hasMid) return null;
                   const circleX = getX(idx);
@@ -253,7 +265,6 @@ const handlePrintFinalReport = () => {
               </svg>
             </div>
 
-            {/* 지표 상세 요약 분석 */}
             <div className="report-panel" style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: "1.2rem", padding: "1rem", borderLeft: "5px solid #b28a50", backgroundColor: "#fafbfc", border: "1px solid #e2e8f0", borderLeftWidth: "5px" }}>
               <TrendingUp size={28} style={{ color: "#b28a50", flexShrink: 0 }} />
               <div>
@@ -268,7 +279,6 @@ const handlePrintFinalReport = () => {
             </div>
           </div>
 
-          {/* Section 2: 회차별 문항 성적 대조표 */}
           <div className="report-section" style={{ marginBottom: "0", breakInside: "avoid" }}>
             <div className="section-title-container" style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "0.85rem" }}>
               <span className="section-num" style={{ backgroundColor: "#1e3a8a", color: "#fff", width: "1.5rem", height: "1.5rem", borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.8rem" }}>2</span>
@@ -309,7 +319,6 @@ const handlePrintFinalReport = () => {
             </table>
           </div>
 
-          {/* Footer (1페이지용) */}
           <div className="report-footer" style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", borderTop: "1px solid #e2e8f0", paddingTop: "0.5rem", fontSize: "0.7rem", color: "#94a3b8" }}>
             <span>ⓒ Learnway School & SGS입시전략연구소</span>
             <span>Page 1 of 2</span>
@@ -320,9 +329,7 @@ const handlePrintFinalReport = () => {
           페이지 경계 (인쇄 시 이 선을 기준으로 분할 인쇄됩니다)
         </div>
 
-        {/* ============================================================== */}
-        {/* OUTCOME PAGE 2: 2페이지 (멘토링 종합 소견 및 정성적 분석)        */}
-        {/* ============================================================== */}
+        {/* OUTCOME PAGE 2: 2페이지 */}
         <div className="report-a4-page" style={{ 
           height: "296mm", 
           boxSizing: "border-box", 
@@ -339,7 +346,6 @@ const handlePrintFinalReport = () => {
             </div>
           </div>
 
-          {/* Section 3: 멘토링 종결 종합 의견 */}
           <div className="report-section" style={{ flex: 1, display: "flex", flexDirection: "column" }}>
             <div className="section-title-container" style={{ display: "flex", alignItems: "center", gap: "0.5rem", marginBottom: "1.2rem" }}>
               <span className="section-num" style={{ backgroundColor: "#1e3a8a", color: "#fff", width: "1.5rem", height: "1.5rem", borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.8rem" }}>3</span>
@@ -353,10 +359,12 @@ const handlePrintFinalReport = () => {
                   💡 멘토 종합 지도 소견 및 관찰 변화
                 </div>
                 <div className="coaching-card-body" style={{ fontSize: "0.78rem", color: "#334155", lineHeight: 1.6 }}>
-                  {postEval?.mentorNotes ? (
-                    `사후 평가 멘토 관찰: "${postEval.mentorNotes}"`
-                  ) : midEval?.mentorNotes ? (
-                    `중간 평가 멘토 관찰: "${midEval.mentorNotes}"`
+                  {isGeneratingAI ? (
+                    <div style={{ color: "#b28a50", fontWeight: "600" }} className="animate-pulse">
+                      Claude AI가 사전/중간/사후 데이터를 분석하여 고품격 학부모 소견을 작성하고 있습니다... (약 5~10초 소요)
+                    </div>
+                  ) : outcomeAI?.overallAnalysis ? (
+                    outcomeAI.overallAnalysis
                   ) : (
                     "프로젝트 시작 시점의 취약점을 보완하기 위해 멘토가 학생과 집중적으로 개념 훈련 및 오답 점검을 진행하였습니다. 학생의 전반적인 개념 적용률과 문제 해결 태도가 매우 긍정적으로 개선되었습니다."
                   )}
@@ -369,8 +377,15 @@ const handlePrintFinalReport = () => {
                   🎯 학습성장 핵심 분야
                 </div>
                 <div className="coaching-card-body" style={{ fontSize: "0.78rem", color: "#334155", lineHeight: 1.6 }}>
-                  사전 평가에서 빈번하게 오답이 발생했던 단원의 기초 성취기준 도달률이 평균 40% 이상 크게 상승하였습니다. 
-                  주요 오개념을 실시간 밀착 피드백을 통해 교정하여 유사 유형의 연계 문항 정답률이 대폭 올라갔습니다.
+                  {isGeneratingAI ? (
+                    <div style={{ color: "#10b981", fontWeight: "600" }} className="animate-pulse">
+                      누적 학습 데이터를 정밀 진단하고 있습니다...
+                    </div>
+                  ) : outcomeAI?.conceptAnalysis ? (
+                    outcomeAI.conceptAnalysis
+                  ) : (
+                    "사전 평가에서 빈번하게 오답이 발생했던 단원의 기초 성취기준 도달률이 평균 40% 이상 크게 상승하였습니다. 주요 오개념을 실시간 밀착 피드백을 통해 교정하여 유사 유형의 연계 문항 정답률이 대폭 올라갔습니다."
+                  )}
                 </div>
               </div>
 
@@ -380,14 +395,20 @@ const handlePrintFinalReport = () => {
                   🔥 추후 연계 학습 제안
                 </div>
                 <div className="coaching-card-body" style={{ fontSize: "0.78rem", color: "#334155", lineHeight: 1.6 }}>
-                  성장률은 매우 우수하나, 심화형 추론 문항에서는 여전히 유형에 따른 혼란 양상을 보입니다. 
-                  성공적인 차기 학습 흐름을 위해 심화 유형 3개 이상 집중 적용 훈련 및 역순 추론 오답 역추적 학습법을 지속할 것을 강력히 권장합니다.
+                  {isGeneratingAI ? (
+                    <div style={{ color: "#ef4444", fontWeight: "600" }} className="animate-pulse">
+                      향후 로드맵을 설계하고 있습니다...
+                    </div>
+                  ) : outcomeAI?.coachingPrescription ? (
+                    outcomeAI.coachingPrescription
+                  ) : (
+                    "성장률은 매우 우수하나, 심화형 추론 문항에서는 여전히 유형에 따른 혼란 양상을 보입니다. 성공적인 차기 학습 흐름을 위해 심화 유형 3개 이상 집중 적용 훈련 및 역순 추론 오답 역추적 학습법을 지속할 것을 강력히 권장합니다."
+                  )}
                 </div>
               </div>
             </div>
           </div>
 
-          {/* Footer (2페이지용) */}
           <div className="report-footer" style={{ marginTop: "auto", display: "flex", justifyContent: "space-between", borderTop: "1px solid #e2e8f0", paddingTop: "0.5rem", fontSize: "0.7rem", color: "#94a3b8" }}>
             <span>ⓒ Learnway School & SGS입시전략연구소</span>
             <span style={{ fontWeight: "bold", color: "#333" }}>최종 종결 성과보고서 | Page 2 of 2</span>
@@ -397,11 +418,8 @@ const handlePrintFinalReport = () => {
     );
   }
 
-
-
   return (
     <div className="dashboard-grid">
-      {/* Past evaluations table */}
       <div className="card">
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1.5rem" }}>
           <h2 style={{ fontSize: "1.3rem", color: "var(--accent-gold)", display: "flex", alignItems: "center", gap: "0.5rem" }}>
@@ -481,7 +499,7 @@ const handlePrintFinalReport = () => {
                         <div style={{ display: "inline-flex", gap: "0.4rem" }}>
                           <button
                             className="btn btn-secondary"
-                             style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem" }}
+                            style={{ padding: "0.3rem 0.6rem", fontSize: "0.75rem" }}
                             title="리포트 조회"
                             onClick={() => onView(item.id)}
                           >
@@ -514,7 +532,6 @@ const handlePrintFinalReport = () => {
         )}
       </div>
 
-      {/* Side tracker for Pre/Mid/Post progression */}
       <div className="card">
         <h2 style={{ fontSize: "1.3rem", color: "var(--accent-gold)", marginBottom: "1rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
           <TrendingUp size={20} /> 사전·중간·사후 변화 리포트
@@ -538,8 +555,13 @@ const handlePrintFinalReport = () => {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "1rem" }}>
               <h3 style={{ fontSize: "1rem", color: "white" }}>{selectedStudent} 학생 성취 이력 ({studentEvals.length}개)</h3>
               {studentEvals.length >= 2 && (
-                <button className="btn btn-primary" style={{ padding: "0.35rem 0.75rem", fontSize: "0.78rem" }} onClick={() => setShowFinalReport(true)}>
-                  <Award size={13} /> 성과보고서 발행
+                <button 
+                  className="btn btn-primary" 
+                  style={{ padding: "0.35rem 0.75rem", fontSize: "0.78rem" }} 
+                  onClick={handleLaunchOutcomeReport}
+                  disabled={isGeneratingAI}
+                >
+                  <Award size={13} /> {isGeneratingAI ? "AI 분석 중..." : "성과보고서 발행"}
                 </button>
               )}
             </div>
