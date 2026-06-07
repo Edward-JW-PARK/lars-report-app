@@ -162,7 +162,7 @@ export const App: React.FC = () => {
     }
   };
 
-  // ★ [해결의 핵심] 우측 "성과보고서 발행" 버튼 전용: 3대 평가 역추적 시계열 종합분석 생성 함수
+  // ★ [해결 완료] 버튼 클릭 시 과거 캐시를 완전히 무시하고 실시간 AI 신규 분석을 "강제" 실행하는 올바른 코드
   const handleGenerateFinalOutcome = async (
     studentName: string, 
     grade: "middle_1" | "middle_2" | "middle_3", 
@@ -183,16 +183,10 @@ export const App: React.FC = () => {
 
     setSelectedStudentMeta({ name: studentName, grade, subject });
     
-    // [버그 수정]: 기존 단일 회차 요약 데이터가 있더라도, "최종 종합 성과보고(isOutcomeReport)" 분석이 완료된 데이터가 아니라면 생략 가드를 우회하고 강제로 새로 분석합니다.
-    const latestEvalWithOutcomeAi = [...studentEvals].reverse().find(
-      e => e.aiResult && e.aiResult.isOutcomeReport && e.aiResult.overallAnalysis && e.aiResult.overallAnalysis.length > 100
-    );
-    
-    if (latestEvalWithOutcomeAi) {
-      setFinalOutcomeResult(latestEvalWithOutcomeAi.aiResult);
-      setCurrentScreen("outcome");
-      return;
-    }
+    // =======================================================
+    // [해결 조치] 버그를 일으키던 latestEvalWithOutcomeAi 가드(return) 블록을 완전히 제거했습니다!
+    // 이제 이 버튼을 누르면 언제나 서버 API를 직접 호출해 Claude Sonnet 4.6이 새로 분석합니다.
+    // =======================================================
 
     setIsGeneratingAI(true);
 
@@ -206,24 +200,23 @@ export const App: React.FC = () => {
           grade,
           subject,
           isOutcomeReport: true, // 시계열 종합 보고 마커 삽입
-evaluations: studentEvals.map(e => {
-  const stats = calculateReportStats(e.grade, e.subject, e.answers);
-  return {
-    examType: e.examType,
-    score: stats.score,
-    // q 옆에 : any 추가 적용 완료
-    wrongQuestions: stats.detailedResults.filter((q: any) => !q.isCorrect).map((q: any) => ({
-      q_idx: q.q_idx,
-      ch_name: q.ch_name,
-      diff: q.diff,
-      std_desc: q.std_desc,
-      intent: q.intent,
-      misconception: q.misconception
-    })),
-    mentorNotes: e.mentorNotes || "기록된 멘토 관찰 피드백이 없습니다.",
-    date: e.date
-  };
-})
+          evaluations: studentEvals.map(e => {
+            const stats = calculateReportStats(e.grade, e.subject, e.answers);
+            return {
+              examType: e.examType,
+              score: stats.score,
+              wrongQuestions: stats.detailedResults.filter((q: any) => !q.isCorrect).map((q: any) => ({
+                q_idx: q.q_idx,
+                ch_name: q.ch_name,
+                diff: q.diff,
+                std_desc: q.std_desc,
+                intent: q.intent,
+                misconception: q.misconception
+              })),
+              mentorNotes: e.mentorNotes || "기록된 멘토 관찰 피드백이 없습니다.",
+              date: e.date
+            };
+          })
         }),
       });
 
@@ -263,7 +256,6 @@ evaluations: studentEvals.map(e => {
       setIsGeneratingAI(false);
     }
   };
-
 
 
 
