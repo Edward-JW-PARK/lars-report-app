@@ -82,17 +82,18 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     growth = midScore - preScore;
   }
 
-  // AI 최종 리포트 결과 바인딩용 타겟 검색 (우선순위: 사후 -> 중간 -> 사전)
+  // AI 최종 리포트 결과 바인딩용 타겟 검색 (사후 -> 중간 -> 사전 순)
   const latestEval = postEval || midEval || preEval;
   
-  // 데이터 동기화를 위해 aiResult 구조를 면밀히 파악 및 바인딩
+  // [해결 핵심]: 단일 회차 결과가 아닌 '최종 성과분석 마커(isOutcomeReport)'가 명확히 주입된 데이터만 인정합니다.
   const aiReportData = latestEval?.aiResult || {};
-  const hasValidAI = !!(aiReportData.overallAnalysis && aiReportData.overallAnalysis.trim());
+  const hasValidOutcomeAI = !!(aiReportData.isOutcomeReport && aiReportData.overallAnalysis && aiReportData.overallAnalysis.trim());
 
-  // [성과보고서 발행] 클릭 시 AI 리포트 누락 방지 가드 가동
+  // [성과보고서 발행] 클릭 시 작동하는 오버라이드 가드
   const handleLaunchOutcomeReport = async () => {
     setShowFinalReport(true);
-    if (!hasValidAI && onGenerateFinalOutcome && latestEval) {
+    // 단일 회차 피드백이 존재하더라도, 성과분석 전용 데이터가 없다면 강제로 AI 기동!
+    if (!hasValidOutcomeAI && onGenerateFinalOutcome && latestEval) {
       try {
         await onGenerateFinalOutcome(latestEval.studentName, latestEval.grade, latestEval.subject);
       } catch (err) {
@@ -115,7 +116,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
     }, 50);
   };
 
-  // Printable Final Report Component (A4 2페이지 인쇄 보장 + 입체적 SVG 성장 그래프 포함 버전)
+  // Printable Final Report Component
   if (showFinalReport && selectedStudent) {
     const scores = [
       { label: "사전", score: preScore || 0 },
@@ -135,7 +136,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
 
     return (
       <div className="report-workspace-container" style={{ minHeight: "auto", overflow: "visible", backgroundColor: "#f1f5f9", padding: "2rem 0" }}>
-        {/* 우측 상단 플로팅 액션 바 (인쇄 시 자동 제외) */}
+        {/* 우측 상단 플로팅 액션 바 */}
         <div className="workspace-actions-floating" style={{ position: "fixed", top: "20px", right: "20px", zIndex: 1000, display: "flex", gap: "0.5rem" }}>
           <button className="btn btn-secondary" onClick={() => setShowFinalReport(false)} style={{ boxShadow: "0 4px 6px -1px rgba(0,0,0,0.1)" }}>
             대시보드로 돌아가기
@@ -157,7 +158,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           </button>
         </div>
 
-        {/* ----------------- PAGE 1: 정량적 통계 및 그래프 페이지 ----------------- */}
+        {/* ----------------- PAGE 1 ----------------- */}
         <div className="report-a4-page" style={{ 
           pageBreakAfter: "always", 
           breakAfter: "page", 
@@ -180,7 +181,6 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
               프로젝트 기간 동안 일어난 학생의 학업 성취 변화 및 종합적인 코칭 성과를 요약 보고합니다.
             </div>
 
-            {/* 학생 메타 인포 테이블 */}
             <div className="report-student-meta" style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "0.75rem", marginTop: "1.5rem" }}>
               <div className="meta-box" style={{ border: "1px solid #e5e7eb", borderRadius: "6px", padding: "0.5rem 0.75rem", display: "flex", flexDirection: "column", gap: "0.15rem" }}>
                 <span className="meta-box-label" style={{ fontSize: "0.7rem", color: "#6b7280", fontWeight: "600" }}>학생명</span>
@@ -230,7 +230,6 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
               </div>
             </div>
 
-            {/* SVG 라인 차트 */}
             <div style={{ backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "1.2rem", marginBottom: "1rem", position: "relative" }}>
               <div style={{ position: "absolute", top: "8px", left: "12px", fontSize: "0.65rem", color: "#94a3b8", fontWeight: 600 }}>성장 지표 트렌드 (Trend Graph)</div>
               <svg width="100%" height="120" viewBox="0 0 500 120" style={{ overflow: "visible" }}>
@@ -362,7 +361,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                       <div style={{ color: "#b28a50", fontWeight: "600" }} className="animate-pulse">
                         Claude Sonnet 4.6이 사전/중간/사후 성취도 데이터를 대조 분석하여 상담용 종합 소견을 기술 중입니다... (약 10초 내외 소요)
                       </div>
-                    ) : aiReportData.overallAnalysis ? (
+                    ) : hasValidOutcomeAI ? (
                       aiReportData.overallAnalysis
                     ) : (
                       "사전 분석 데이터를 찾을 수 없습니다. 우측 상단의 [AI 성과 정밀 분석] 버튼을 클릭해 소견서 생성을 활성화해 주십시오."
@@ -380,7 +379,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                       <div style={{ color: "#10b981", fontWeight: "600" }} className="animate-pulse">
                         누적 정량 통계를 바탕으로 시계열 흐름을 복원하고 있습니다...
                       </div>
-                    ) : aiReportData.conceptAnalysis ? (
+                    ) : hasValidOutcomeAI ? (
                       aiReportData.conceptAnalysis
                     ) : (
                       "성과 분석 결과를 기다리고 있습니다. 실시간 생성 처리가 완료되면 이 항목에 피드백이 정교하게 채워집니다."
@@ -398,7 +397,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                       <div style={{ color: "#3b82f6", fontWeight: "600" }} className="animate-pulse">
                         가정과 교실이 연계된 맞춤형 티칭 솔루션을 정식 컴파일하고 있습니다...
                       </div>
-                    ) : aiReportData.coachingPrescription ? (
+                    ) : hasValidOutcomeAI ? (
                       aiReportData.coachingPrescription
                     ) : (
                       "가정 학습 및 연계 피드백 연계 지도 설계 가이드가 준비 중입니다."
@@ -416,7 +415,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                       <div style={{ color: "#ef4444", fontWeight: "600" }} className="animate-pulse">
                         차기 학습 전략 목표 로드맵을 구성하는 중입니다...
                       </div>
-                    ) : aiReportData.actionPlan ? (
+                    ) : hasValidOutcomeAI ? (
                       aiReportData.actionPlan.split('\n').map((line: string, lIdx: number) => (
                         <div key={lIdx} style={{ marginBottom: "0.15rem" }}>{line}</div>
                       ))
@@ -434,7 +433,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
             <span style={{ fontWeight: "bold", color: "#333" }}>최종 종결 성과보고서 | Page 2 of 2</span>
           </div>
         </div>
-      </div> // <-- missing이었던 감싸는 컨테이너 report-workspace-container를 마침내 정상 폐쇄합니다.
+      </div>
     );
   }
 
