@@ -208,7 +208,12 @@ const handlePrintFinalReport = () => {
             {/* 고해상도 인라인 SVG 성장선 곡선 그래프 */}
             <div style={{ backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "1rem", marginBottom: "1rem", position: "relative" }}>
               <div style={{ position: "absolute", top: "8px", left: "12px", fontSize: "0.65rem", color: "#94a3b8", fontWeight: 600 }}>성장 지표 트렌드 (Trend Graph)</div>
-              <svg viewBox="0 0 500 130" style={{ width: "100%", height: "120px" }}>
+              <svg 
+  width="100%" 
+  height="100%" 
+  viewBox="0 0 500 200" // 500:200 비율의 고유 좌표 공간 선언 (숫자만 작성!)
+  preserveAspectRatio="none" // 왜곡 없이 채우기 위해 설정 가능
+>
                 {/* 수평 가이드 라인 (0점, 50점, 100점) */}
                 <line x1="40" y1="110" x2="460" y2="110" stroke="#e2e8f0" strokeDasharray="3,3" />
                 <line x1="40" y1="60" x2="460" y2="60" stroke="#e2e8f0" strokeDasharray="3,3" />
