@@ -146,7 +146,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           </button>
         </div>
 
-        {/* ----------------- PAGE 1 (LARS 6.pdf 기준 정량 페이지 완벽 대응) ----------------- */}
+        {/* ----------------- PAGE 1 ----------------- */}
         <div className="report-a4-page" style={{ 
           pageBreakAfter: "always", 
           breakAfter: "page", 
@@ -204,68 +204,98 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                 <span className="section-title" style={{ fontSize: "0.9rem", fontWeight: "bold", color: "#1e3a8a" }}>학업 성취 점수 추이 및 성장 곡선</span>
               </div>
 
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: "0.8rem", marginBottom: "0.8rem" }}>
-                <div className="report-panel" style={{ textAlign: "center", padding: "0.6rem", backgroundColor: "#f8fafc", borderRadius: "8px", borderTop: "4px solid #94a3b8" }}>
-                  <span style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 600 }}>사전 평가</span>
-                  <span style={{ display: "block", fontSize: "1.5rem", fontWeight: 800, color: "#475569", margin: "0.1rem 0" }}>{preScore !== null ? `${preScore}점` : "미응시"}</span>
-                  <span style={{ fontSize: "0.6rem", color: "#94a3b8" }}>{preEval?.date || "-"}</span>
-                </div>
-                <div className="report-panel" style={{ textAlign: "center", padding: "0.6rem", backgroundColor: "#f8fafc", borderRadius: "8px", borderTop: "4px solid #b28a50" }}>
-                  <span style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 600 }}>중간 평가</span>
-                  <span style={{ display: "block", fontSize: "1.5rem", fontWeight: 800, color: "#b28a50", margin: "0.1rem 0" }}>{midScore !== null ? `${midScore}점` : "미응시"}</span>
-                  <span style={{ fontSize: "0.6rem", color: "#94a3b8" }}>{midEval?.date || "-"}</span>
-                </div>
-                <div className="report-panel" style={{ textAlign: "center", padding: "0.6rem", backgroundColor: "#f8fafc", borderRadius: "8px", borderTop: "4px solid #1e3a8a" }}>
-                  <span style={{ fontSize: "0.7rem", color: "#64748b", fontWeight: 600 }}>사후 평가</span>
-                  <span style={{ display: "block", fontSize: "1.5rem", fontWeight: 800, color: "#1e3a8a", margin: "0.1rem 0" }}>{postScore !== null ? `${postScore}점` : "미응시"}</span>
-                  <span style={{ fontSize: "0.6rem", color: "#94a3b8" }}>{postEval?.date || "-"}</span>
-                </div>
-              </div>
+              <div style={{ display: "grid", gridTemplateColumns: "55% 45%", gap: "1.2rem" }}>
+                {/* 왼쪽 표 영역 */}
+                <table className="report-table" style={{ fontSize: "0.65rem", width: "100%", borderCollapse: "collapse" }}>
+                  <thead>
+                    <tr style={{ backgroundColor: "#f8fafc", color: "#1e3a8a" }}>
+                      <th style={{ padding: "0.4rem", border: "1px solid #cbd5e1" }}>평가 단계</th>
+                      <th style={{ padding: "0.4rem", border: "1px solid #cbd5e1" }}>평가 일자</th>
+                      <th style={{ padding: "0.4rem", border: "1px solid #cbd5e1" }}>성취 문항 수</th>
+                      <th style={{ padding: "0.4rem", border: "1px solid #cbd5e1" }}>환산 점수</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr>
+                      <td style={{ padding: "0.4rem", border: "1px solid #cbd5e1", textAlign: "center", fontWeight: "bold" }}>사전 평가 (시작)</td>
+                      <td style={{ padding: "0.4rem", border: "1px solid #cbd5e1", textAlign: "center" }}>{preEval?.date || "-"}</td>
+                      <td style={{ padding: "0.4rem", border: "1px solid #cbd5e1", textAlign: "center" }}>
+                        {preEval ? `${calculateReportStats(preEval.grade, preEval.subject, preEval.answers).correctCount} / ${calculateReportStats(preEval.grade, preEval.subject, preEval.answers).totalCount}` : "-"}
+                      </td>
+                      <td style={{ padding: "0.4rem", border: "1px solid #cbd5e1", textAlign: "center", fontWeight: "bold" }}>{preScore !== null ? `${preScore}점` : "-"}</td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "0.4rem", border: "1px solid #cbd5e1", textAlign: "center", fontWeight: "bold" }}>중간 평가 (과정)</td>
+                      <td style={{ padding: "0.4rem", border: "1px solid #cbd5e1", textAlign: "center" }}>{midEval?.date || "-"}</td>
+                      <td style={{ padding: "0.4rem", border: "1px solid #cbd5e1", textAlign: "center" }}>
+                        {midEval ? `${calculateReportStats(midEval.grade, midEval.subject, midEval.answers).correctCount} / ${calculateReportStats(midEval.grade, midEval.subject, midEval.answers).totalCount}` : "-"}
+                      </td>
+                      <td style={{ padding: "0.4rem", border: "1px solid #cbd5e1", textAlign: "center", fontWeight: "bold" }}>{midScore !== null ? `${midScore}점` : "-"}</td>
+                    </tr>
+                    <tr>
+                      <td style={{ padding: "0.4rem", border: "1px solid #cbd5e1", textAlign: "center", fontWeight: "bold" }}>사후 평가 (최종)</td>
+                      <td style={{ padding: "0.4rem", border: "1px solid #cbd5e1", textAlign: "center" }}>{postEval?.date || "-"}</td>
+                      <td style={{ padding: "0.4rem", border: "1px solid #cbd5e1", textAlign: "center" }}>
+                        {postEval ? `${calculateReportStats(postEval.grade, postEval.subject, postEval.answers).correctCount} / ${calculateReportStats(postEval.grade, postEval.subject, postEval.answers).totalCount}` : "-"}
+                      </td>
+                      <td style={{ padding: "0.4rem", border: "1px solid #cbd5e1", textAlign: "center", fontWeight: "bold", color: "#ef4444" }}>{postScore !== null ? `${postScore}점` : "-"}</td>
+                    </tr>
+                  </tbody>
+                </table>
 
-              <div style={{ backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "8px", padding: "1rem", marginBottom: "0.8rem", position: "relative" }}>
-                <div style={{ position: "absolute", top: "6px", left: "10px", fontSize: "0.6rem", color: "#94a3b8", fontWeight: 600 }}>성장 지표 트렌드 (Trend Graph)</div>
-                <svg width="100%" height="110" viewBox="0 0 500 110" style={{ overflow: "visible" }}>
-                  <line x1="40" y1="100" x2="460" y2="100" stroke="#e2e8f0" strokeDasharray="3,3" />
-                  <line x1="40" y1="55" x2="460" y2="55" stroke="#e2e8f0" strokeDasharray="3,3" />
-                  <line x1="40" y1="10" x2="460" y2="10" stroke="#e2e8f0" strokeDasharray="3,3" />
-                  
-                  <text x="15" y="103" fontSize="8" fill="#94a3b8" fontWeight="bold">0</text>
-                  <text x="15" y="58" fontSize="8" fill="#94a3b8" fontWeight="bold">50</text>
-                  <text x="15" y="13" fontSize="8" fill="#94a3b8" fontWeight="bold">100</text>
+                {/* 오른쪽 그래프 영역 */}
+                <div style={{ backgroundColor: "#f8fafc", border: "1px solid #e2e8f0", borderRadius: "6px", padding: "0.6rem", position: "relative", display: "flex", flexDirection: "column", justifyContent: "center" }}>
+                  <div style={{ fontSize: "0.6rem", color: "#94a3b8", fontWeight: 700, marginBottom: "0.2rem", textAlign: "center" }}>성취도 변화 추적 그래프</div>
+                  <svg width="100%" height="70" viewBox="0 0 200 70" style={{ overflow: "visible" }}>
+                    <line x1="20" y1="60" x2="180" y2="60" stroke="#e2e8f0" strokeDasharray="2,2" />
+                    <line x1="20" y1="35" x2="180" y2="35" stroke="#e2e8f0" strokeDasharray="2,2" />
+                    <line x1="20" y1="10" x2="180" y2="10" stroke="#e2e8f0" strokeDasharray="2,2" />
 
-                  {/* 트렌드 그래프 선 */}
-                  {preScore !== null && (
-                    <path
-                      d={
-                        hasMid && midScore !== null && postScore !== null
-                          ? `M 60 ${110 - preScore} L 250 ${110 - midScore} L 440 ${110 - postScore}`
-                          : `M 60 ${110 - preScore} L 440 ${110 - (postScore ?? midScore ?? 0)}`
-                      }
-                      fill="none"
-                      stroke="#1e3a8a"
-                      strokeWidth="3"
-                      strokeLinecap="round"
-                      strokeLinejoin="round"
-                    />
-                  )}
-                  
-                  {scores.map((s, idx) => {
-                    if (idx === 1 && !hasMid) return null;
-                    const circleX = 60 + 190 * idx;
-                    const circleY = 110 - s.score;
-                    return (
-                      <g key={idx}>
-                        <circle cx={circleX} cy={circleY} r="5" fill="#fff" stroke="#1e3a8a" strokeWidth="3" />
-                        <rect x={circleX - 18} y={circleY - 22} width="36" height="14" rx="3" fill="#1e3a8a" />
-                        <text x={circleX} y={circleY - 12} fontSize="8" fill="#fff" fontWeight="bold" textAnchor="middle">{s.score}점</text>
-                        <text x={circleX} y="115" fontSize="8" fill="#64748b" fontWeight="bold" textAnchor="middle">{s.label}</text>
+                    {/* 트렌드 선 */}
+                    {preScore !== null && (
+                      <path
+                        d={
+                          hasMid && midScore !== null && postScore !== null
+                            ? `M 30 ${60 - preScore * 0.5} L 100 ${60 - midScore * 0.5} L 170 ${60 - postScore * 0.5}`
+                            : `M 30 ${60 - preScore * 0.5} L 170 ${60 - (postScore ?? midScore ?? 0) * 0.5}`
+                        }
+                        fill="none"
+                        stroke="#ef4444"
+                        strokeWidth="1.5"
+                      />
+                    )}
+
+                    {/* 사전 포인트 */}
+                    {preScore !== null && (
+                      <g>
+                        <circle cx="30" cy="60 - preScore * 0.5" r="2.5" fill="#fff" stroke="#1e3a8a" strokeWidth="1.5" />
+                        <text x="30" y={52 - preScore * 0.5} fontSize="5" fill="#333" fontWeight="bold" textAnchor="middle">{preScore}점</text>
+                        <text x="30" y="67" fontSize="5" fill="#64748b" textAnchor="middle">사전</text>
                       </g>
-                    );
-                  })}
-                </svg>
+                    )}
+
+                    {/* 중간 포인트 */}
+                    {midScore !== null && (
+                      <g>
+                        <circle cx="100" cy={60 - midScore * 0.5} r="2.5" fill="#fff" stroke="#b28a50" strokeWidth="1.5" />
+                        <text x="100" y={52 - midScore * 0.5} fontSize="5" fill="#333" fontWeight="bold" textAnchor="middle">{midScore}점</text>
+                        <text x="100" y="67" fontSize="5" fill="#64748b" textAnchor="middle">중간</text>
+                      </g>
+                    )}
+
+                    {/* 사후 포인트 */}
+                    {postScore !== null && (
+                      <g>
+                        <circle cx="170" cy={60 - postScore * 0.5} r="2.5" fill="#fff" stroke="#ef4444" strokeWidth="1.5" />
+                        <text x="170" y={52 - postScore * 0.5} fontSize="5" fill="#ef4444" fontWeight="bold" textAnchor="middle">{postScore}점</text>
+                        <text x="170" y="67" fontSize="5" fill="#64748b" textAnchor="middle">사후</text>
+                      </g>
+                    )}
+                  </svg>
+                </div>
               </div>
 
-              <div className="report-panel" style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: "1rem", padding: "0.8rem", borderLeft: "5px solid #b28a50", backgroundColor: "#fafbfc", border: "1px solid #e2e8f0", borderLeftWidth: "5px" }}>
+              <div className="report-panel" style={{ display: "flex", flexDirection: "row", alignItems: "center", gap: "1rem", padding: "0.8rem", borderLeft: "5px solid #b28a50", backgroundColor: "#fafbfc", border: "1px solid #e2e8f0", borderLeftWidth: "5px", marginTop: "1rem" }}>
                 <TrendingUp size={24} style={{ color: "#b28a50", flexShrink: 0 }} />
                 <div>
                   <h4 style={{ fontSize: "0.8rem", fontWeight: 700, color: "#1e3a8a", marginBottom: "0.1rem" }}>
@@ -331,7 +361,7 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
           페이지 경계 (인쇄 시 이 선을 기준으로 분할 인쇄됩니다)
         </div>
 
-        {/* ----------------- PAGE 2: Claude Sonnet 4.6 정성 분석 및 솔루션 ----------------- */}
+        {/* ----------------- PAGE 2: Claude Sonnet 4.6 정성 분석 및 솔루션 (완벽한 1단 수직배열 변경 완료) ----------------- */}
         <div className="report-a4-page" style={{ 
           width: "210mm",
           height: "296mm", 
@@ -389,64 +419,61 @@ export const DashboardScreen: React.FC<DashboardScreenProps> = ({
                   </div>
                 </div>
 
-                {/* 2단 그리드 컨테이너 (좌: 오개념, 우: 지도법) */}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "0.6rem" }}>
-                  {/* 2. 학습성장 핵심 오개념 교정 역사 */}
-                  <div className="coaching-card" style={{ borderLeft: "4px solid #10b981", backgroundColor: "#fff", border: "1px solid #e2e8f0", borderLeftWidth: "4px", padding: "0.7rem 0.8rem", borderRadius: "6px", breakInside: "avoid" }}>
-                    <div className="coaching-card-title" style={{ color: "#10b981", fontWeight: "bold", fontSize: "0.75rem", marginBottom: "0.25rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                      🎯 학습성장 핵심 오개념 교정 역사
-                    </div>
-                    <div className="coaching-card-body" style={{ 
-                      fontSize: "0.72rem", 
-                      color: "#334155", 
-                      lineHeight: 1.4, 
-                      wordBreak: "keep-all",
-                      whiteSpace: "pre-wrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      display: "-webkit-box",
-                      WebkitLineClamp: 10,
-                      WebkitBoxOrient: "vertical"
-                    }}>
-                      {isGeneratingAI ? (
-                        <div style={{ color: "#10b981", fontWeight: "600" }} className="animate-pulse">
-                          누적 정량 통계를 바탕으로 시계열 흐름을 복원하고 있습니다...
-                        </div>
-                      ) : hasValidOutcomeAI ? (
-                        aiReportData.conceptAnalysis
-                      ) : (
-                        "성과 분석 결과를 기다리고 있습니다. 실시간 생성 처리가 완료되면 이 항목에 피드백이 정교하게 채워집니다."
-                      )}
-                    </div>
+                {/* 2. 학습성장 핵심 오개념 교정 역사 (2단 분할을 철폐하고 시원한 1단 횡형으로 변경) */}
+                <div className="coaching-card full-width" style={{ borderLeft: "4px solid #10b981", backgroundColor: "#fff", border: "1px solid #e2e8f0", borderLeftWidth: "4px", padding: "0.7rem 0.8rem", borderRadius: "6px", breakInside: "avoid" }}>
+                  <div className="coaching-card-title" style={{ color: "#10b981", fontWeight: "bold", fontSize: "0.75rem", marginBottom: "0.25rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                    🎯 학습성장 핵심 오개념 교정 역사
                   </div>
+                  <div className="coaching-card-body" style={{ 
+                    fontSize: "0.72rem", 
+                    color: "#334155", 
+                    lineHeight: 1.4, 
+                    wordBreak: "keep-all",
+                    whiteSpace: "pre-wrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    display: "-webkit-box",
+                    WebkitLineClamp: 7,
+                    WebkitBoxOrient: "vertical"
+                  }}>
+                    {isGeneratingAI ? (
+                      <div style={{ color: "#10b981", fontWeight: "600" }} className="animate-pulse">
+                        누적 정량 통계를 바탕으로 시계열 흐름을 복원하고 있습니다...
+                      </div>
+                    ) : hasValidOutcomeAI ? (
+                      aiReportData.conceptAnalysis
+                    ) : (
+                      "성과 분석 결과를 기다리고 있습니다. 실시간 생성 처리가 완료되면 이 항목에 피드백이 정교하게 채워집니다."
+                    )}
+                  </div>
+                </div>
 
-                  {/* 3. 추천 지도 노하우 및 가정 연계 지도법 */}
-                  <div className="coaching-card" style={{ borderLeft: "4px solid #3b82f6", backgroundColor: "#fff", border: "1px solid #e2e8f0", borderLeftWidth: "4px", padding: "0.7rem 0.8rem", borderRadius: "6px", breakInside: "avoid" }}>
-                    <div className="coaching-card-title" style={{ color: "#3b82f6", fontWeight: "bold", fontSize: "0.75rem", marginBottom: "0.25rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
-                      ✏ 추천 지도 노하우 및 가정 연계 지도법
-                    </div>
-                    <div className="coaching-card-body" style={{ 
-                      fontSize: "0.72rem", 
-                      color: "#334155", 
-                      lineHeight: 1.4, 
-                      wordBreak: "keep-all",
-                      whiteSpace: "pre-wrap",
-                      overflow: "hidden",
-                      textOverflow: "ellipsis",
-                      display: "-webkit-box",
-                      WebkitLineClamp: 10,
-                      WebkitBoxOrient: "vertical"
-                    }}>
-                      {isGeneratingAI ? (
-                        <div style={{ color: "#3b82f6", fontWeight: "600" }} className="animate-pulse">
-                          가정과 교실이 연계된 맞춤형 티칭 솔루션을 정식 컴파일하고 있습니다...
-                        </div>
-                      ) : hasValidOutcomeAI ? (
-                        aiReportData.coachingPrescription
-                      ) : (
-                        "가정 학습 및 연계 피드백 연계 지도 설계 가이드가 준비 중입니다."
-                      )}
-                    </div>
+                {/* 3. 추천 지도 노하우 및 가정 연계 지도법 (2단 분할을 철폐하고 시원한 1단 횡형으로 변경) */}
+                <div className="coaching-card full-width" style={{ borderLeft: "4px solid #3b82f6", backgroundColor: "#fff", border: "1px solid #e2e8f0", borderLeftWidth: "4px", padding: "0.7rem 0.8rem", borderRadius: "6px", breakInside: "avoid" }}>
+                  <div className="coaching-card-title" style={{ color: "#3b82f6", fontWeight: "bold", fontSize: "0.75rem", marginBottom: "0.25rem", display: "flex", alignItems: "center", gap: "0.3rem" }}>
+                    ✏ 추천 지도 노하우 및 가정 연계 지도법
+                  </div>
+                  <div className="coaching-card-body" style={{ 
+                    fontSize: "0.72rem", 
+                    color: "#334155", 
+                    lineHeight: 1.4, 
+                    wordBreak: "keep-all",
+                    whiteSpace: "pre-wrap",
+                    overflow: "hidden",
+                    textOverflow: "ellipsis",
+                    display: "-webkit-box",
+                    WebkitLineClamp: 7,
+                    WebkitBoxOrient: "vertical"
+                  }}>
+                    {isGeneratingAI ? (
+                      <div style={{ color: "#3b82f6", fontWeight: "600" }} className="animate-pulse">
+                        가정과 교실이 연계된 맞춤형 티칭 솔루션을 정식 컴파일하고 있습니다...
+                      </div>
+                    ) : hasValidOutcomeAI ? (
+                      aiReportData.coachingPrescription
+                    ) : (
+                      "가정 학습 및 연계 피드백 연계 지도 설계 가이드가 준비 중입니다."
+                    )}
                   </div>
                 </div>
 
