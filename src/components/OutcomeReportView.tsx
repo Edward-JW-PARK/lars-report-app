@@ -1,7 +1,8 @@
 // src/components/OutcomeReportView.tsx
 import React from "react";
-import { ArrowLeft, Printer, CheckCircle, AlertTriangle, MessageSquare, BookOpen, TrendingUp } from "lucide-react";
-import { Evaluation } from "../App";
+import { ArrowLeft, Printer, AlertTriangle, MessageSquare, BookOpen, TrendingUp } from "lucide-react"; // 사용하지 않는 CheckCircle 아이콘 제거
+import type { Evaluation } from "../App"; // pure Type 임포트를 위해 "type" 키워드 추가
+
 
 interface OutcomeReportViewProps {
   studentName: string;

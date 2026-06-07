@@ -3,7 +3,7 @@ import React, { useState } from "react";
 import { Plus, Eye, Edit2, Trash2, TrendingUp, Award, FileText, Printer } from "lucide-react";
 import { calculateReportStats } from "../utils/reportGenerator";
 
-interface Evaluation {
+export interface Evaluation {
   id: string;
   studentName: string;
   grade: "middle_1" | "middle_2" | "middle_3";
@@ -16,20 +16,30 @@ interface Evaluation {
   aiResult?: any;
 }
 
+// 수정 후 (이렇게 변경)
 interface DashboardScreenProps {
   evaluations: Evaluation[];
   onAddNew: () => void;
   onView: (id: string) => void;
   onEdit: (id: string) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => Promise<void> | void; // Promise 호환 가능하게 변경
+  isGeneratingAI: boolean; // 추가된 속성 반영
+  onGenerateFinalOutcome?: (
+    studentName: string,
+    grade: "middle_1" | "middle_2" | "middle_3",
+    subject: "math" | "english"
+  ) => Promise<void>; // 추가된 콜백 함수 속성 반영
 }
 
+
+// 수정 후 (이렇게 변경)
 export const DashboardScreen: React.FC<DashboardScreenProps> = ({
   evaluations,
   onAddNew,
   onView,
   onEdit,
   onDelete,
+  // 여기에 있던 isGeneratingAI와 onGenerateFinalOutcome를 완전히 제거합니다.
 }) => {
   const [selectedStudent, setSelectedStudent] = useState<string>("");
   const [showFinalReport, setShowFinalReport] = useState(false);
