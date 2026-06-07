@@ -170,6 +170,66 @@ export const App: React.FC = () => {
     }
   };
 
+  // 3대 평가(사전, 중간, 사후) 누적 시계열 종합 성과분석 보고서 생성 함수 (신설)
+  const generateFinalOutcomeReport = async (studentName: string, grade: "middle_1" | "middle_2" | "middle_3", subject: "math" | "english") => {
+    // 해당 학생의 동일 과목 학년의 전체 평가 기록 추출 및 사전 -> 중간 -> 사후 순서 정렬
+    const studentEvals = evaluations
+      .filter(e => e.studentName === studentName && e.grade === grade && e.subject === subject)
+      .sort((a, b) => {
+        const order = { "사전": 1, "중간": 2, "사후": 3 };
+        return order[a.examType] - order[b.examType];
+      });
+
+    if (studentEvals.length < 2) {
+      alert("종합 성과 분석보고서를 위해서는 최소 2개 회차(사전, 중간 등) 이상의 평가 기록이 시스템에 등록되어 있어야 합니다.");
+      return;
+    }
+
+    setIsGeneratingAI(true);
+
+    try {
+      const response = await fetch("/api/generate-outcome-report", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          studentName,
+          grade,
+          subject,
+          evaluations: studentEvals
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("누적 성과 종합 분석 생성에 실패했습니다.");
+      }
+
+      const finalOutcomeData = await response.json();
+      
+      // 누적 최종 분석 성과 보고 데이터를 가장 마지막 최신 평가 레코드(예: 사후 평가)의 aiResult로 최종 바인딩합니다.
+      const latestEval = studentEvals[studentEvals.length - 1];
+      const updatedEval = { ...latestEval, aiResult: finalOutcomeData };
+
+      await fetch(`/api/evaluations/${latestEval.id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(updatedEval),
+      });
+
+      setEvaluations((prev) =>
+        prev.map((e) => e.id === latestEval.id ? updatedEval : e)
+      );
+      
+      alert("🎉 사전, 중간, 사후 데이터를 모두 역추적한 최고급 종합 성과보고 의견 갱신이 정상적으로 완료되었습니다!");
+    } catch (e: any) {
+      console.error(e);
+      alert(`최종 성과 보고 분석 생성 중 에러 발생: ${e.message || e}`);
+    } finally {
+      setIsGeneratingAI(false);
+    }
+  };
+
   const handleSaveEvaluation = async (data: {
     studentName: string;
     grade: "middle_1" | "middle_2" | "middle_3";
@@ -340,6 +400,7 @@ export const App: React.FC = () => {
               setCurrentScreen("list");
             }}
             onRegenerateAI={handleGenerateAIReport}
+            onGenerateFinalOutcome={() => generateFinalOutcomeReport(activeEvaluation.studentName, activeEvaluation.grade, activeEvaluation.subject)}
             isGeneratingAI={isGeneratingAI}
           />
         )}

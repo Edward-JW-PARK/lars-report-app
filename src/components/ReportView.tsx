@@ -1,7 +1,7 @@
 // src/components/ReportView.tsx
 import React from "react";
 import { calculateReportStats, getMathBehavioralDomain } from "../utils/reportGenerator";
-import { ArrowLeft, Printer, RefreshCw, CheckCircle, AlertTriangle, MessageSquare, BookOpen } from "lucide-react";
+import { ArrowLeft, Printer, RefreshCw, CheckCircle, AlertTriangle, MessageSquare, BookOpen, Sparkles } from "lucide-react";
 
 interface ClaudeReportData {
   overallAnalysis?: string;
@@ -26,6 +26,7 @@ interface ReportViewProps {
   };
   onBack: () => void;
   onRegenerateAI: () => Promise<void>;
+  onGenerateFinalOutcome?: () => Promise<void>; // 최종 성과보고 전용 비동기 트리거 Props 추가
   isGeneratingAI: boolean;
 }
 
@@ -33,6 +34,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
   evaluation,
   onBack,
   onRegenerateAI,
+  onGenerateFinalOutcome,
   isGeneratingAI
 }) => {
   const stats = calculateReportStats(evaluation.grade, evaluation.subject, evaluation.answers);
@@ -101,10 +103,20 @@ export const ReportView: React.FC<ReportViewProps> = ({
         <button className="btn btn-secondary" onClick={onBack}>
           <ArrowLeft size={16} /> 대시보드로 이동
         </button>
-        <button className="btn btn-secondary" onClick={onRegenerateAI} disabled={isGeneratingAI}>
-          <RefreshCw size={16} className={isGeneratingAI ? "spinner" : ""} />
-          {isGeneratingAI ? "AI 분석 생성 중..." : "AI 코칭 피드백 갱신"}
-        </button>
+        
+        {/* 사후 평가(최종 단계)인 경우 고품격 최종 성과 의견 생성 버튼을 다이내믹하게 출력 */}
+        {evaluation.examType === "사후" && onGenerateFinalOutcome ? (
+          <button className="btn btn-primary" onClick={onGenerateFinalOutcome} disabled={isGeneratingAI} style={{ backgroundColor: "#8a6d3b", borderColor: "#8a6d3b" }}>
+            <Sparkles size={16} className={isGeneratingAI ? "spinner" : ""} />
+            {isGeneratingAI ? "최종 종합 진단 성과 분석 중..." : "최종 종합 성과보고의견 생성"}
+          </button>
+        ) : (
+          <button className="btn btn-secondary" onClick={onRegenerateAI} disabled={isGeneratingAI}>
+            <RefreshCw size={16} className={isGeneratingAI ? "spinner" : ""} />
+            {isGeneratingAI ? "AI 분석 생성 중..." : "AI 코칭 피드백 갱신"}
+          </button>
+        )}
+
         <button className="btn btn-primary" onClick={handlePrint}>
           <Printer size={16} /> PDF 저장 및 인쇄
         </button>
@@ -204,7 +216,7 @@ export const ReportView: React.FC<ReportViewProps> = ({
                       <span>{item.correct}/{item.total} ({item.rate}%)</span>
                     </div>
                     <div className="progress-bar-bg">
-                      <div className="progress-bar-fill gold" style={{ width: `${item.rate}%` }}></div>
+                      <div className="progress-bar-fill" style={{ width: `${item.rate}%` }}></div>
                     </div>
                   </div>
                 ))}
@@ -327,13 +339,15 @@ export const ReportView: React.FC<ReportViewProps> = ({
         <div className="report-section">
           <div className="section-title-container">
             <span className="section-num">5</span>
-            <span className="section-title">Claude AI 맞춤형 학습 처방</span>
+            <span className="section-title">
+              {evaluation.examType === "사후" ? "SGS Learnway 최종 종합 성과 분석 및 학업 처방" : "Claude AI 맞춤형 학습 처방"}
+            </span>
           </div>
           
           {isGeneratingAI ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "2rem", border: "1px dashed #ccc", borderRadius: "6px", backgroundColor: "#fafbfc" }}>
               <div className="spinner" style={{ marginBottom: "1rem" }}></div>
-              <span style={{ fontSize: "0.85rem", color: "#666" }}>Claude AI가 평가 데이터와 오답 문항을 정밀 심사하고 있습니다...</span>
+              <span style={{ fontSize: "0.85rem", color: "#666" }}>SGS Learnway 인공지능이 누적 평가 히스토리 및 정밀 오개념 변화 추이를 계측하고 있습니다...</span>
             </div>
           ) : hasAIData ? (
             <div className="coaching-box-container">
@@ -341,48 +355,58 @@ export const ReportView: React.FC<ReportViewProps> = ({
               <div className="coaching-card full-width">
                 <div className="coaching-card-title">
                   <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-                    <CheckCircle size={14} /> 종합 성취 분석 코멘트
+                    <CheckCircle size={14} /> 
+                    {evaluation.examType === "사후" ? "학습성과 누적 종합 소견" : "종합 성취 분석 코멘트"}
                   </div>
                 </div>
-                <div className="coaching-card-body">{aiData.overallAnalysis}</div>
+                <div className="coaching-card-body" style={{ whiteSpace: "pre-wrap", lineHeight: "1.6" }}>{aiData.overallAnalysis}</div>
               </div>
 
               {/* 오개념 분석 */}
               <div className="coaching-card">
                 <div className="coaching-card-title">
                   <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-                    <AlertTriangle size={14} /> 취약점 및 오개념 처방
+                    <AlertTriangle size={14} /> 
+                    {evaluation.examType === "사후" ? "누적 취약 오개념 완치 분석" : "취약점 및 오개념 처방"}
                   </div>
                 </div>
-                <div className="coaching-card-body">{aiData.conceptAnalysis}</div>
+                <div className="coaching-card-body" style={{ whiteSpace: "pre-wrap", lineHeight: "1.5" }}>{aiData.conceptAnalysis}</div>
               </div>
 
               {/* 멘토 코칭 가이드 */}
               <div className="coaching-card">
                 <div className="coaching-card-title">
                   <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-                    <MessageSquare size={14} /> 멘토 코칭 가이드 (티칭 팁)
+                    <MessageSquare size={14} /> 
+                    {evaluation.examType === "사후" ? "탁월한 지도법 및 가정 내 지속적 처방" : "멘토 코칭 가이드 (티칭 팁)"}
                   </div>
                 </div>
-                <div className="coaching-card-body">{aiData.coachingPrescription}</div>
+                <div className="coaching-card-body" style={{ whiteSpace: "pre-wrap", lineHeight: "1.5" }}>{aiData.coachingPrescription}</div>
               </div>
 
               {/* 학생 액션 플랜 */}
               <div className="coaching-card full-width">
                 <div className="coaching-card-title">
                   <div style={{ display: "flex", alignItems: "center", gap: "0.25rem" }}>
-                    <BookOpen size={14} /> 실천 액션 플랜 (학생용 미션)
+                    <BookOpen size={14} /> 
+                    {evaluation.examType === "사후" ? "상급 연계 과정을 위한 장기 핵심 액션플랜" : "실천 액션 플랜 (학생용 미션)"}
                   </div>
                 </div>
-                <div className="coaching-card-body">{aiData.actionPlan}</div>
+                <div className="coaching-card-body" style={{ whiteSpace: "pre-wrap", lineHeight: "1.6" }}>{aiData.actionPlan}</div>
               </div>
             </div>
           ) : (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "3rem 1.5rem", border: "1px dashed #ccc", borderRadius: "6px", backgroundColor: "#fafbfc" }}>
-              <span style={{ fontSize: "0.85rem", color: "#666", marginBottom: "0.75rem" }}>아직 AI 피드백이 생성되지 않았습니다.</span>
-              <button className="btn btn-primary" onClick={onRegenerateAI}>
-                <RefreshCw size={14} /> AI 분석 생성하기
-              </button>
+              <span style={{ fontSize: "0.85rem", color: "#666", marginBottom: "0.75rem" }}>아직 종합 AI 피드백이 생성되지 않았습니다.</span>
+              {evaluation.examType === "사후" && onGenerateFinalOutcome ? (
+                <button className="btn btn-primary" onClick={onGenerateFinalOutcome}>
+                  <Sparkles size={14} /> 학부모 상담용 최종 성과보고의견 생성하기
+                </button>
+              ) : (
+                <button className="btn btn-primary" onClick={onRegenerateAI}>
+                  <RefreshCw size={14} /> AI 분석 생성하기
+                </button>
+              )}
             </div>
           )}
         </div>
