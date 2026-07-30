@@ -65,9 +65,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 - 3단계 종합 학업 이력:
 ${serializedEvals}`;
 
-    // 2026년 공식 API 식별자명인 Claude Sonnet 4.6로 완전 교정
+    // 공식 API 모델 식별자 claude-sonnet-4-6 적용
     const response = await anthropic.messages.create({
-      model: "Claude Sonnet 4.6",
+      model: "claude-sonnet-4-6",
       max_tokens: 2000,
       system: systemInstruction,
       messages: [{ role: "user", content: prompt }],
