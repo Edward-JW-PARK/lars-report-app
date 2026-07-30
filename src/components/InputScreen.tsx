@@ -159,7 +159,7 @@ export const InputScreen: React.FC<InputScreenProps> = ({ onSave, onBack, initia
           <textarea
             id="mentorNotes"
             rows={3}
-            placeholder="학생의 성향, 오답 시 행동 특징, 특별 지도 사항 등을 적어주세요. 이 메모는 Claude AI 분석 가이드에 반영됩니다."
+            placeholder="학생의 성향, 오답 시 행동 특징, 특별 지도 사항 등을 적어주세요. 이 메모는 멘토 코칭 분석 가이드에 반영됩니다."
             value={mentorNotes}
             onChange={(e) => setMentorNotes(e.target.value)}
           ></textarea>

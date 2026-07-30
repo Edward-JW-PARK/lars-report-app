@@ -340,14 +340,14 @@ export const ReportView: React.FC<ReportViewProps> = ({
           <div className="section-title-container">
             <span className="section-num">5</span>
             <span className="section-title">
-              {evaluation.examType === "사후" ? "SGS Learnway 최종 종합 성과 분석 및 학업 처방" : "Claude AI 맞춤형 학습 처방"}
+              {evaluation.examType === "사후" ? "SGS Learnway 최종 종합 성과 분석 및 학업 처방" : "SGS Learnway 멘토 맞춤형 학습 처방"}
             </span>
           </div>
           
           {isGeneratingAI ? (
             <div style={{ display: "flex", flexDirection: "column", alignItems: "center", padding: "2rem", border: "1px dashed #ccc", borderRadius: "6px", backgroundColor: "#fafbfc" }}>
               <div className="spinner" style={{ marginBottom: "1rem" }}></div>
-              <span style={{ fontSize: "0.85rem", color: "#666" }}>SGS Learnway 인공지능이 누적 평가 히스토리 및 정밀 오개념 변화 추이를 계측하고 있습니다...</span>
+              <span style={{ fontSize: "0.85rem", color: "#666" }}>SGS Learnway 멘토 진단 시스템이 누적 평가 히스토리 및 정밀 오개념 변화 추이를 분석하고 있습니다...</span>
             </div>
           ) : hasAIData ? (
             <div className="coaching-box-container">
