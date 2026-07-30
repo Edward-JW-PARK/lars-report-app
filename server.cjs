@@ -113,16 +113,15 @@ let inMemoryEvaluations = [
 
 if (isDbConfigured) {
   try {
-    const isInternalUrl = rawDbUrl.includes('railway.internal');
-    const isPublicProxy = rawDbUrl.includes('rlwy.net');
+    const isLocal = rawDbUrl.includes('localhost') || rawDbUrl.includes('127.0.0.1');
     pool = new Pool({
       connectionString: rawDbUrl,
-      ssl: isInternalUrl ? false : { rejectUnauthorized: false },
-      connectionTimeoutMillis: 10000,
+      ssl: isLocal ? false : { rejectUnauthorized: false },
+      connectionTimeoutMillis: 15000,
       idleTimeoutMillis: 30000,
-      max: 5
+      max: 10
     });
-    console.log(`🐘 PostgreSQL 연결 풀 생성 완료 (${isInternalUrl ? '내부 네트워크' : isPublicProxy ? '공개 프록시(rlwy.net)' : '외부 URL'} 모드)`);
+    console.log(`🐘 PostgreSQL 연결 풀 생성 완료 (SSL: ${isLocal ? 'Off' : 'On'})`);
   } catch (poolErr) {
     console.error('❌ Pool 생성 실패:', poolErr.message);
     dbError = poolErr.message;
