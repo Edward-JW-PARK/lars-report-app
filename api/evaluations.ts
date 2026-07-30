@@ -74,6 +74,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).end();
   }
 
+  // URL에서 동적 파라미터 추출 (/api/evaluations/eval-12345)
+  const rawUrl = req.url || "";
+  const cleanPath = rawUrl.split("?")[0];
+  const urlParts = cleanPath.split("/").filter(Boolean);
+  const targetId = (req.query && (req.query.id as string)) || (urlParts.length >= 2 && urlParts[0] === "api" && urlParts[1] === "evaluations" && urlParts[2] ? urlParts[2] : "");
+
   if (req.method === "GET") {
     if (pool) {
       try {
@@ -129,6 +135,45 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const newEval = { id, studentName, grade, subject, examType, mentorName, mentorNotes, answers, date, aiResult };
     inMemoryEvaluations.unshift(newEval);
     return res.status(201).json({ success: true });
+  }
+
+  if (req.method === "PUT") {
+    const { studentName, grade, subject, examType, mentorName, mentorNotes, answers, date, aiResult } = req.body;
+    const id = targetId || req.body.id;
+    if (pool && id) {
+      try {
+        const updateQuery = `
+          UPDATE evaluations
+          SET student_name = $1, grade = $2, subject = $3, exam_type = $4, mentor_name = $5, mentor_notes = $6, answers = $7, date = $8, ai_result = $9
+          WHERE id = $10
+        `;
+        await pool.query(updateQuery, [
+          studentName, grade, subject, examType, mentorName, mentorNotes,
+          JSON.stringify(answers), date, aiResult ? JSON.stringify(aiResult) : null, id
+        ]);
+        return res.status(200).json({ success: true });
+      } catch (err) {
+        console.warn("Vercel DB Update Warning:", err);
+      }
+    }
+    inMemoryEvaluations = inMemoryEvaluations.map(e =>
+      e.id === id ? { ...e, studentName, grade, subject, examType, mentorName, mentorNotes, answers, date, aiResult } : e
+    );
+    return res.status(200).json({ success: true });
+  }
+
+  if (req.method === "DELETE") {
+    const id = targetId || req.body?.id;
+    if (pool && id) {
+      try {
+        await pool.query("DELETE FROM evaluations WHERE id = $1", [id]);
+        return res.status(200).json({ success: true });
+      } catch (err) {
+        console.warn("Vercel DB Delete Warning:", err);
+      }
+    }
+    inMemoryEvaluations = inMemoryEvaluations.filter(e => e.id !== id);
+    return res.status(200).json({ success: true });
   }
 
   return res.status(405).json({ error: "Method not allowed" });

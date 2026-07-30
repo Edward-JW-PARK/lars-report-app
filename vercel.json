@@ -11,6 +11,10 @@
       "destination": "/api/generate-coaching-report"
     },
     {
+      "source": "/api/evaluations/:id*",
+      "destination": "/api/evaluations"
+    },
+    {
       "source": "/api/evaluations",
       "destination": "/api/evaluations"
     },

@@ -65,9 +65,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 - 3단계 종합 학업 이력:
 ${serializedEvals}`;
 
-    // 공식 API 모델 식별자 claude-sonnet-4-6 적용
+    // Anthropic 공식 표준 모델 식별자 지정 (Claude 3.5 Sonnet)
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: "claude-3-5-sonnet-20241022",
       max_tokens: 2000,
       system: systemInstruction,
       messages: [{ role: "user", content: prompt }],

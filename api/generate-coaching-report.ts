@@ -76,9 +76,9 @@ ${mentorNotes || "기재된 메모 없음"}
 위 데이터를 철저히 분석하여 [응답 JSON 필드 규격]에 맞춘 고가치 핵심 문장으로 작성해 주십시오.
 `;
 
-    // 공식 API 모델 식별자 claude-sonnet-4-6 적용
+    // Anthropic 공식 표준 모델 식별자 지정 (Claude 3.5 Sonnet)
     const response = await anthropic.messages.create({
-      model: "claude-sonnet-4-6",
+      model: "claude-3-5-sonnet-20241022",
       max_tokens: 2000,
       system: systemInstruction,
       messages: [{ role: "user", content: prompt }],

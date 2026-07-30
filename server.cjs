@@ -519,8 +519,8 @@ app.post('/api/generate-outcome-report', async (req, res) => {
     ${serializedEvals}`;
 
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
-      max_tokens: 1500, // 불필요한 토큰 낭비 및 출력 장문화를 막기 위해 타이트하게 제한 설정
+      model: 'claude-3-5-sonnet-20241022',
+      max_tokens: 1500,
       system: systemInstruction,
       messages: [{ role: 'user', content: prompt }],
     });
