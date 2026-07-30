@@ -10,6 +10,12 @@ export default defineConfig({
       '@': path.resolve(__dirname, '.'),
     },
   },
+  build: {
+    chunkSizeWarningLimit: 2000,
+  },
+  optimizeDeps: {
+    include: ['lucide-react'],
+  },
   server: {
     proxy: {
       // /api/* 요청을 Express API 서버(포트 3099)로 프록시
