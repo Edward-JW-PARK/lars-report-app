@@ -247,7 +247,7 @@ export const OutcomeReportView: React.FC<OutcomeReportViewProps> = ({
         </div>
 
         <div className="report-footer" style={{ display: "flex", justifyContent: "space-between", borderTop: "1px solid #e2e8f0", paddingTop: "0.4rem", fontSize: "0.65rem", color: "#94a3b8" }}>
-          <span>ⓒ Learnway School & SGS입시전략연구소</span>
+          <span>ⓒ Learnway School</span>
           <span>Page 1 of 2</span>
         </div>
       </div>
@@ -280,7 +280,7 @@ export const OutcomeReportView: React.FC<OutcomeReportViewProps> = ({
           <div className="report-section" style={{ display: "flex", flexDirection: "column" }}>
             <div className="section-title-container" style={{ display: "flex", alignItems: "center", gap: "0.4rem", marginBottom: "0.8rem" }}>
               <span className="section-num" style={{ backgroundColor: "#b28a50", color: "#fff", width: "1.3rem", height: "1.3rem", borderRadius: "50%", display: "inline-flex", alignItems: "center", justifyContent: "center", fontWeight: "bold", fontSize: "0.75rem" }}>3</span>
-              <span className="section-title" style={{ fontSize: "0.9rem", fontWeight: "bold", color: "#1e3a8a" }}>SGS Learnway 최종 종합 분석 및 멘토 피드백</span>
+              <span className="section-title" style={{ fontSize: "0.9rem", fontWeight: "bold", color: "#1e3a8a" }}>Learnway 멘토 최종 종합 분석 및 피드백</span>
             </div>
             
             <div className="coaching-box-container" style={{ display: "flex", flexDirection: "column", gap: "0.6rem" }}>
@@ -357,7 +357,7 @@ export const OutcomeReportView: React.FC<OutcomeReportViewProps> = ({
         </div>
 
         <div className="report-footer" style={{ borderTop: "1px solid #e2e8f0", paddingTop: "0.3rem", fontSize: "0.65rem", color: "#94a3b8", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <span>ⓒ Learnway School & SGS입시전략연구소</span>
+          <span>ⓒ Learnway School</span>
           <span style={{ fontWeight: "bold", color: "#333" }}>최종 종결 성과보고서 | Page 2 of 2</span>
         </div>
       </div>
