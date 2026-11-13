@@ -1,20 +1,15 @@
 // api/generate-coaching-report.ts
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import Anthropic from "@anthropic-ai/sdk";
+import { applyCors, checkAdminAuth } from "./_auth";
 
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY || process.env.VITE_ANTHROPIC_API_KEY
 });
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  // CORS Headers
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,PATCH,DELETE,POST,PUT");
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version"
-  );
+  // CORS Headers (허용 출처 제한)
+  applyCors(req, res);
 
   if (req.method === "OPTIONS") {
     return res.status(200).end();
@@ -22,6 +17,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
+  }
+
+  // 🔒 무인증 외부 호출 차단: 관리자 키가 없으면 AI(Anthropic) 비용이 발생하지 않습니다.
+  const auth = checkAdminAuth(req);
+  if (!auth.ok) {
+    return res.status(auth.status).json(auth.body);
   }
 
   try {
@@ -78,7 +79,7 @@ ${mentorNotes || "기재된 메모 없음"}
 
     // Anthropic 공식 표준 모델 식별자 지정 (Claude 3.5 Sonnet)
     const response = await anthropic.messages.create({
-      model: "claude-3-5-sonnet-20241022",
+      model: process.env.ANTHROPIC_MODEL || "claude-sonnet-4-6",
       max_tokens: 2000,
       system: systemInstruction,
       messages: [{ role: "user", content: prompt }],

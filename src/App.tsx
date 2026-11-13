@@ -4,7 +4,9 @@ import { DashboardScreen } from "./components/DashboardScreen";
 import { InputScreen } from "./components/InputScreen";
 import { ReportView } from "./components/ReportView";
 import { OutcomeReportView } from "./components/OutcomeReportView"; // 신설할 최종 성과보고서 전용 컴포넌트
-import { BookOpen, Sparkles } from "lucide-react";
+import { BookOpen, Sparkles, KeyRound } from "lucide-react";
+import { AdminKeyGate } from "./components/AdminKeyGate";
+import { apiFetch, getAdminKey, saveAdminKey, clearAdminKey } from "./lib/apiFetch";
 import { MATH_BLUEPRINT, ENGLISH_BLUEPRINT } from "./data/blueprintMetadata";
 import { calculateReportStats } from "./utils/reportGenerator";
 
@@ -69,6 +71,10 @@ export const INITIAL_EVALUATIONS: Evaluation[] = [
 
 export const App: React.FC = () => {
   const [evaluations, setEvaluations] = useState<Evaluation[]>([]);
+
+  // 🔒 관리자 인증: 서버 LARS_ADMIN_KEY 와 같은 값을 입력받아 API 호출 헤더로 사용합니다.
+  const [adminKey, setAdminKey] = useState<string>(() => getAdminKey());
+  const [authError, setAuthError] = useState<string>("");
   
   // "outcome" 스크린 분기 추가 (최종 성과 보고서 전용 화면)
   const [currentScreen, setCurrentScreen] = useState<"list" | "input" | "report" | "outcome">("list");
@@ -80,11 +86,28 @@ export const App: React.FC = () => {
   const [finalOutcomeResult, setFinalOutcomeResult] = useState<any | null>(null);
   const [selectedStudentMeta, setSelectedStudentMeta] = useState<{name: string, grade: string, subject: string} | null>(null);
 
-  // 로컬 DB 실시간 데이터 로드
+  // 로컬 DB 실시간 데이터 로드 (관리자 키가 있을 때만)
   useEffect(() => {
+    if (!adminKey) return;
+
     const loadData = async () => {
       try {
-        const response = await fetch("/api/evaluations");
+        const response = await apiFetch("/api/evaluations");
+
+        if (response.status === 401) {
+          clearAdminKey();
+          setAuthError("관리자 키가 올바르지 않습니다. 다시 입력해 주세요.");
+          setAdminKey("");
+          return;
+        }
+        if (response.status === 503) {
+          const data = await response.json().catch(() => null);
+          clearAdminKey();
+          setAuthError(data?.error || "서버에 LARS_ADMIN_KEY 환경변수가 설정되지 않았습니다.");
+          setAdminKey("");
+          return;
+        }
+
         if (response.ok) {
           const data = await response.json();
           setEvaluations(data);
@@ -94,7 +117,7 @@ export const App: React.FC = () => {
       }
     };
     loadData();
-  }, []);
+  }, [adminKey]);
 
   const activeEvaluation = evaluations.find((e) => e.id === selectedEvalId);
   const editingEvaluation = evaluations.find((e) => e.id === editingEvalId);
@@ -124,7 +147,7 @@ export const App: React.FC = () => {
     setIsGeneratingAI(true);
 
     try {
-      const response = await fetch("/api/generate-coaching-report", {
+      const response = await apiFetch("/api/generate-coaching-report", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -145,7 +168,7 @@ export const App: React.FC = () => {
       const aiData = await response.json();
       const updatedEval = { ...targetEval, aiResult: aiData };
 
-      await fetch(`/api/evaluations/${targetEval.id}`, {
+      await apiFetch(`/api/evaluations/${targetEval.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatedEval),
@@ -192,7 +215,7 @@ export const App: React.FC = () => {
 
     try {
       // 2. 백엔드에 3개 회차의 정량 누적 데이터와 멘토 코칭 메모를 담아 전송
-      const response = await fetch("/api/generate-outcome-report", {
+      const response = await apiFetch("/api/generate-outcome-report", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -238,7 +261,7 @@ export const App: React.FC = () => {
       const latestEval = studentEvals[studentEvals.length - 1];
       const updatedEval = { ...latestEval, aiResult: enrichedOutcomeData };
 
-      await fetch(`/api/evaluations/${latestEval.id}`, {
+      await apiFetch(`/api/evaluations/${latestEval.id}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(updatedEval),
@@ -289,7 +312,7 @@ export const App: React.FC = () => {
       };
 
       try {
-        const res = await fetch(`/api/evaluations/${editingEvalId}`, {
+        const res = await apiFetch(`/api/evaluations/${editingEvalId}`, {
           method: "PUT",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(targetEval),
@@ -321,7 +344,7 @@ export const App: React.FC = () => {
       };
 
       try {
-        const res = await fetch("/api/evaluations", {
+        const res = await apiFetch("/api/evaluations", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify(targetEval),
@@ -354,7 +377,7 @@ export const App: React.FC = () => {
   const handleDeleteEvaluation = async (id: string) => {
     if (window.confirm("정말로 이 평가 채점 기록을 삭제하시겠습니까?")) {
       try {
-        const res = await fetch(`/api/evaluations/${id}`, {
+        const res = await apiFetch(`/api/evaluations/${id}`, {
           method: "DELETE"
         });
         if (!res.ok) throw new Error("DB 삭제 요청에 실패했습니다.");
@@ -374,6 +397,20 @@ export const App: React.FC = () => {
     }
   };
 
+  // 🔒 관리자 키가 없으면 인증 화면을 먼저 보여줍니다. (학생 개인정보 보호)
+  if (!adminKey) {
+    return (
+      <AdminKeyGate
+        errorMessage={authError}
+        onSubmit={(key) => {
+          saveAdminKey(key);
+          setAuthError("");
+          setAdminKey(key);
+        }}
+      />
+    );
+  }
+
   return (
     <div className="app-container">
       <header className="app-header">
@@ -385,8 +422,33 @@ export const App: React.FC = () => {
           </div>
         </div>
         
-        <div style={{ display: "flex", alignItems: "center", gap: "0.5rem", fontSize: "0.85rem", color: "var(--accent-gold)" }}>
-          <Sparkles size={14} /> Claude 3.5 Sonnet 연동 중
+        <div style={{ display: "flex", alignItems: "center", gap: "0.75rem", fontSize: "0.85rem", color: "var(--accent-gold)" }}>
+          <span style={{ display: "flex", alignItems: "center", gap: "0.35rem" }}>
+            <Sparkles size={14} /> Claude Sonnet 4.6 연동 중
+          </span>
+          <button
+            type="button"
+            onClick={() => {
+              clearAdminKey();
+              setAuthError("");
+              setAdminKey("");
+            }}
+            title="관리자 키 변경"
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "0.35rem",
+              padding: "0.35rem 0.6rem",
+              borderRadius: "8px",
+              border: "1px solid rgba(197, 168, 128, 0.4)",
+              background: "transparent",
+              color: "var(--accent-gold)",
+              fontSize: "0.78rem",
+              cursor: "pointer",
+            }}
+          >
+            <KeyRound size={13} /> 키 변경
+          </button>
         </div>
       </header>
 
