@@ -338,8 +338,8 @@ app.get('/api/evaluations', requireAdminKey, async (req, res) => {
       }));
       return res.json(list);
     } catch (err) {
-      console.warn('⚠️ DB 조회 실패, 인메모리 임시 데이터로 안전 전환합니다:', err.message);
-      return res.json(inMemoryEvaluations);
+      console.error('❌ DB 조회 실패:', err.message);
+      return res.status(503).json({ success: false, code: 'DB_QUERY_FAILED', error: '평가 데이터를 데이터베이스에서 불러오지 못했습니다.' });
     }
   } else {
     return res.json(inMemoryEvaluations);
@@ -372,10 +372,8 @@ app.post('/api/evaluations', requireAdminKey, async (req, res) => {
       console.log(`✅ [DB INSERT 성공] ${studentName} 학생 데이터 저장 완료 (id: ${id})`);
       return res.status(201).json({ success: true });
     } catch (err) {
-      console.warn(`⚠️ [DB INSERT 실패 - 인메모리 폴백] ${err.message}`);
-      const newEval = { id, studentName, grade, subject, examType, mentorName, mentorNotes, answers, date, aiResult };
-      inMemoryEvaluations.unshift(newEval);
-      return res.status(201).json({ success: true });
+      console.error(`❌ [DB INSERT 실패] ${err.message}`);
+      return res.status(503).json({ success: false, code: 'DB_WRITE_FAILED', error: '평가 기록을 데이터베이스에 저장하지 못했습니다.' });
     }
   } else {
     console.warn(`⚠️ [인메모리 저장] DB 미연결 상태 - ${studentName} 데이터를 메모리에만 저장합니다.`);
@@ -410,13 +408,8 @@ app.put('/api/evaluations/:id', requireAdminKey, async (req, res) => {
       ]);
       return res.json({ success: true });
     } catch (err) {
-      console.warn(`⚠️ [DB UPDATE 실패 - 인메모리 폴백] ${err.message}`);
-      inMemoryEvaluations = inMemoryEvaluations.map(e => 
-        e.id === id 
-          ? { ...e, studentName, grade, subject, examType, mentorName, mentorNotes, answers, date, aiResult }
-          : e
-      );
-      return res.json({ success: true });
+      console.error(`❌ [DB UPDATE 실패] ${err.message}`);
+      return res.status(503).json({ success: false, code: 'DB_WRITE_FAILED', error: '평가 기록 수정 내용을 데이터베이스에 반영하지 못했습니다.' });
     }
   } else {
     inMemoryEvaluations = inMemoryEvaluations.map(e => 

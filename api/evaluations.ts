@@ -99,8 +99,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         }));
         return res.status(200).json(list);
       } catch (err) {
-        console.warn("Vercel DB Query Warning:", err);
-        return res.status(200).json(inMemoryEvaluations);
+        console.error("Vercel DB Query Error:", err);
+        return res.status(503).json({
+          success: false,
+          code: "DB_QUERY_FAILED",
+          error: "평가 데이터를 데이터베이스에서 불러오지 못했습니다.",
+        });
       }
     }
     return res.status(200).json(inMemoryEvaluations);
@@ -130,7 +134,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ]);
         return res.status(201).json({ success: true });
       } catch (err) {
-        console.warn("Vercel DB Insert Warning:", err);
+        console.error("Vercel DB Insert Error:", err);
+        return res.status(503).json({
+          success: false,
+          code: "DB_WRITE_FAILED",
+          error: "평가 기록을 데이터베이스에 저장하지 못했습니다. 원본 보호를 위해 다시 시도해 주세요.",
+        });
       }
     }
     const newEval = { id, studentName, grade, subject, examType, mentorName, mentorNotes, answers, date, aiResult };
@@ -154,7 +163,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         ]);
         return res.status(200).json({ success: true });
       } catch (err) {
-        console.warn("Vercel DB Update Warning:", err);
+        console.error("Vercel DB Update Error:", err);
+        return res.status(503).json({
+          success: false,
+          code: "DB_WRITE_FAILED",
+          error: "평가 기록 수정 내용을 데이터베이스에 반영하지 못했습니다.",
+        });
       }
     }
     inMemoryEvaluations = inMemoryEvaluations.map(e =>
@@ -170,7 +184,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         await pool.query("DELETE FROM evaluations WHERE id = $1", [id]);
         return res.status(200).json({ success: true });
       } catch (err) {
-        console.warn("Vercel DB Delete Warning:", err);
+        console.error("Vercel DB Delete Error:", err);
+        return res.status(503).json({
+          success: false,
+          code: "DB_DELETE_FAILED",
+          error: "평가 기록을 데이터베이스에서 삭제하지 못했습니다.",
+        });
       }
     }
     inMemoryEvaluations = inMemoryEvaluations.filter(e => e.id !== id);
