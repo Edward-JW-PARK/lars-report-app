@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { Pool } from "pg";
+import { applyCors, checkAdminAuth } from "./_auth";
 
 const rawDbUrl = process.env.DATABASE_URL;
 
@@ -62,16 +63,16 @@ let inMemoryEvaluations = [
 ];
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
-  res.setHeader("Access-Control-Allow-Credentials", "true");
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET,OPTIONS,PATCH,DELETE,POST,PUT");
-  res.setHeader(
-    "Access-Control-Allow-Headers",
-    "X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version"
-  );
+  applyCors(req, res);
 
   if (req.method === "OPTIONS") {
     return res.status(200).end();
+  }
+
+  // 🔒 학생 개인정보(평가 데이터) 보호: 관리자 키가 없으면 읽기/쓰기 모두 차단합니다.
+  const auth = checkAdminAuth(req);
+  if (!auth.ok) {
+    return res.status(auth.status).json(auth.body);
   }
 
   // URL에서 동적 파라미터 추출 (/api/evaluations/eval-12345)

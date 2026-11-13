@@ -194,8 +194,57 @@ async function initDatabase() {
 const app = express();
 const PORT = process.env.PORT || 3099;
 
-app.use(cors({ origin: '*' }));
+// 허용 출처 제한: LARS_ALLOWED_ORIGINS(쉼표 구분)에 등록된 출처만 CORS 를 허용합니다.
+// 아무것도 등록하지 않으면 같은 출처 요청만 동작합니다.
+const allowedOrigins = (process.env.LARS_ALLOWED_ORIGINS || '')
+  .split(',')
+  .map(origin => origin.trim())
+  .filter(Boolean);
+
+app.use(cors({
+  origin(origin, callback) {
+    if (!origin) return callback(null, true); // 같은 출처·서버 간 요청
+    if (allowedOrigins.includes('*') || allowedOrigins.includes(origin)) return callback(null, true);
+    return callback(null, false);
+  },
+  credentials: true,
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Admin-Key', 'X-Requested-With', 'Accept'],
+}));
 app.use(express.json({ limit: '2mb' }));
+
+// ── 관리자 인증 ─────────────────────────────────────────────
+// LARS_ADMIN_KEY 환경변수와 같은 값을 x-admin-key(또는 Authorization: Bearer) 헤더로 보내야 통과합니다.
+const crypto = require('crypto');
+
+function readAdminKey(req) {
+  const raw = (req.headers['x-admin-key'] || req.headers['authorization'] || '').toString().trim();
+  if (!raw) return '';
+  const matched = /^Bearer\s+(.+)$/i.exec(raw);
+  return matched ? matched[1].trim() : raw;
+}
+
+function requireAdminKey(req, res, next) {
+  const expected = (process.env.LARS_ADMIN_KEY || '').trim();
+  if (!expected) {
+    return res.status(503).json({
+      error: '서버에 LARS_ADMIN_KEY 환경변수가 설정되지 않아 API가 잠겨 있습니다.',
+      code: 'ADMIN_KEY_NOT_CONFIGURED',
+    });
+  }
+
+  const provided = readAdminKey(req);
+  if (!provided) {
+    return res.status(401).json({ error: '관리자 인증 키가 필요합니다.', code: 'ADMIN_AUTH_REQUIRED' });
+  }
+
+  const providedHash = crypto.createHash('sha256').update(provided).digest();
+  const expectedHash = crypto.createHash('sha256').update(expected).digest();
+  if (!crypto.timingSafeEqual(providedHash, expectedHash)) {
+    return res.status(401).json({ error: '관리자 인증 키가 올바르지 않습니다.', code: 'ADMIN_AUTH_REQUIRED' });
+  }
+
+  return next();
+}
 
 // 정규식 기반 알맹이 텍스트 추출 함수
 function extractFieldByRegex(text, fieldName, nextFieldName) {
@@ -271,7 +320,7 @@ function robustJsonParse(rawText) {
 initDatabase();
 
 // 1. GET /api/evaluations - 전체 채점 기록 목록 조회
-app.get('/api/evaluations', async (req, res) => {
+app.get('/api/evaluations', requireAdminKey, async (req, res) => {
   if (pool) {
     try {
       const dbRes = await pool.query('SELECT * FROM evaluations ORDER BY created_at DESC');
@@ -298,7 +347,7 @@ app.get('/api/evaluations', async (req, res) => {
 });
 
 // 2. POST /api/evaluations - 신규 채점 기록 등록
-app.post('/api/evaluations', async (req, res) => {
+app.post('/api/evaluations', requireAdminKey, async (req, res) => {
   const { id, studentName, grade, subject, examType, mentorName, mentorNotes, answers, date, aiResult } = req.body;
   console.log(`\n📥 [POST /api/evaluations] 신규 등록 요청 수신`);
   
@@ -337,7 +386,7 @@ app.post('/api/evaluations', async (req, res) => {
 });
 
 // 3. PUT /api/evaluations/:id - 채점 기록 수정
-app.put('/api/evaluations/:id', async (req, res) => {
+app.put('/api/evaluations/:id', requireAdminKey, async (req, res) => {
   const { id } = req.params;
   const { studentName, grade, subject, examType, mentorName, mentorNotes, answers, date, aiResult } = req.body;
   if (pool) {
@@ -380,7 +429,7 @@ app.put('/api/evaluations/:id', async (req, res) => {
 });
 
 // 4. DELETE /api/evaluations/:id - 채점 기록 삭제
-app.delete('/api/evaluations/:id', async (req, res) => {
+app.delete('/api/evaluations/:id', requireAdminKey, async (req, res) => {
   const { id } = req.params;
   if (pool) {
     try {
@@ -397,7 +446,7 @@ app.delete('/api/evaluations/:id', async (req, res) => {
 });
 
 // 5. POST /api/generate-coaching-report - Claude AI 피드백 생성 (개별 평가용: 빠른 성적 분석 요약)
-app.post('/api/generate-coaching-report', async (req, res) => {
+app.post('/api/generate-coaching-report', requireAdminKey, async (req, res) => {
   try {
     const { studentName, grade, subject, examType, totalScore, wrongQuestions, mentorNotes } = req.body;
 
@@ -443,7 +492,7 @@ app.post('/api/generate-coaching-report', async (req, res) => {
     - 멘토 메모: ${mentorNotes || '없음'}`;
 
     const response = await anthropic.messages.create({
-      model: 'claude-sonnet-4-6',
+      model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6',
       max_tokens: 3000,
       system: systemInstruction,
       messages: [{ role: 'user', content: prompt }],
@@ -460,7 +509,7 @@ app.post('/api/generate-coaching-report', async (req, res) => {
 });
 
 // ★ [수정 및 극적 최적화 완료]: 3대 평가 누적 최종 성과 분석 전용 API (고밀도 극도 단축 프롬프트 및 원본 데이터 보존 버전)
-app.post('/api/generate-outcome-report', async (req, res) => {
+app.post('/api/generate-outcome-report', requireAdminKey, async (req, res) => {
   try {
     const { studentName, grade, subject, evaluations } = req.body;
 
@@ -519,7 +568,7 @@ app.post('/api/generate-outcome-report', async (req, res) => {
     ${serializedEvals}`;
 
     const response = await anthropic.messages.create({
-      model: 'claude-3-5-sonnet-20241022',
+      model: process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6',
       max_tokens: 1500,
       system: systemInstruction,
       messages: [{ role: 'user', content: prompt }],
